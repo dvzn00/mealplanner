@@ -57,10 +57,14 @@ beforeEach(async () => {
 });
 
 describe("RLS: planos e slots", () => {
+  // O cadastro monta uma semana de exemplo para cada usuário, então as
+  // contagens abaixo apontam o plano da Ana em vez de contar a tabela toda.
+
   it("a dona enxerga o próprio plano", async () => {
     const total = await comoUsuario(db, ana, async (tx) => {
       const { rows } = await tx.query<{ c: number }>(
-        "select count(*)::int as c from public.weekly_plans",
+        "select count(*)::int as c from public.weekly_plans where id = $1",
+        [planoDaAna],
       );
       return rows[0].c;
     });
@@ -71,7 +75,8 @@ describe("RLS: planos e slots", () => {
   it("outro usuário não enxerga plano alheio", async () => {
     const total = await comoUsuario(db, bruno, async (tx) => {
       const { rows } = await tx.query<{ c: number }>(
-        "select count(*)::int as c from public.weekly_plans",
+        "select count(*)::int as c from public.weekly_plans where id = $1",
+        [planoDaAna],
       );
       return rows[0].c;
     });
@@ -82,7 +87,8 @@ describe("RLS: planos e slots", () => {
   it("outro usuário não enxerga os slots do plano alheio", async () => {
     const total = await comoUsuario(db, bruno, async (tx) => {
       const { rows } = await tx.query<{ c: number }>(
-        "select count(*)::int as c from public.plan_slots",
+        "select count(*)::int as c from public.plan_slots where plan_id = $1",
+        [planoDaAna],
       );
       return rows[0].c;
     });
@@ -93,7 +99,8 @@ describe("RLS: planos e slots", () => {
   it("outro usuário não enxerga a lista de compras alheia", async () => {
     const total = await comoUsuario(db, bruno, async (tx) => {
       const { rows } = await tx.query<{ c: number }>(
-        "select count(*)::int as c from public.shopping_list",
+        "select count(*)::int as c from public.shopping_list where plan_id = $1",
+        [planoDaAna],
       );
       return rows[0].c;
     });

@@ -18,6 +18,9 @@ npx supabase link --project-ref <ref-do-projeto>
 npx supabase db push
 ```
 
+Todo o SQL é reexecutável: colar o bloco inteiro de novo não dá erro. Isso vale
+inclusive para retomar depois de uma falha no meio.
+
 ## Os arquivos, em ordem
 
 | Arquivo                       | O que faz                                              |
@@ -27,6 +30,24 @@ npx supabase db push
 | `..._rls.sql`                 | privilégios de tabela e políticas de RLS               |
 | `..._auth_hooks.sql`          | cria `profiles` quando alguém se cadastra              |
 | `..._storage.sql`             | bucket `recipe-images` e suas políticas                |
+| `..._semana_de_exemplo.sql`   | a semana que o novo usuário encontra ao entrar         |
+
+## Depois de aplicar
+
+```bash
+npm run db:check     # as tabelas e a função existem?
+npm run db:seed      # popula ingredientes e receitas globais
+npm run db:smoke     # cria um usuário descartável, confere o cadastro, apaga
+```
+
+`db:seed` lê `receitas-seed.json` da raiz do projeto ou de `scripts/`. Sem o
+arquivo, usa as cinco receitas de `lib/seed/receitas-padrao.ts`. Rodar de novo
+atualiza as receitas globais de mesmo nome — então editar o JSON e repetir
+funciona.
+
+`db:smoke` é a verificação de ponta a ponta do cadastro: perfil criado, semana
+atual montada, 21 horários, seis já com receita e lista de compras somada. O
+usuário de teste é apagado no final, e o `on delete cascade` leva o resto.
 
 ## Como isso é testado
 

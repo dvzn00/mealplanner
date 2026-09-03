@@ -16,7 +16,7 @@ O trabalho está dividido em blocos. Este arquivo é atualizado ao final de cada
 | ----- | ----------------------------------------------- | ---------- |
 | 1     | Setup do projeto, design tokens, tooling         | Concluído  |
 | 2     | Supabase, schema, RLS, função e trigger, testes  | Concluído  |
-| 3     | Seed de receitas e plano de exemplo              | Pendente   |
+| 3     | Seed de receitas e plano de exemplo              | Concluído  |
 | 4     | Autenticação, layout base e páginas iniciais     | Pendente   |
 
 ## Stack instalada
@@ -266,6 +266,83 @@ que scripts de linha de comando possam usá-la. A barreira contra o bundle do
 cliente está em `lib/supabase/admin.ts`, que importa `server-only` e é por onde
 a aplicação consome a chave.
 
+### 20. A semana de exemplo é determinística
+
+O briefing pede receitas em "slots aleatórios". Aleatório foi trocado por
+determinístico: o catálogo global é ordenado por calorias e distribuído em
+ordem cronológica a partir do café da manhã de segunda, ciclando quando há
+menos receitas que horários.
+
+Duas razões. Determinismo é o que permite o teste afirmar alguma coisa — e o
+que faz duas contas novas verem a mesma demonstração, em vez de uma cair numa
+combinação sem graça. De brinde, ordenar por calorias põe a receita mais leve
+no café da manhã, que é onde ela faz sentido, sem precisar de nenhum campo
+novo no schema.
+
+Preenche só segunda e terça. O resto da semana fica vazio de propósito: é o
+convite para arrastar. Com o catálogo padrão de 5 receitas em 6 horários, a
+primeira repete — e a lista de compras já nasce mostrando a soma funcionando.
+
+### 21. Dado de demonstração não impede ninguém de criar conta
+
+`handle_new_user` roda em gatilho sobre `auth.users`: se ele levantar erro, o
+cadastro falha. Então a montagem da semana vai dentro de um bloco de exceção
+que registra `warning` e segue. O perfil, esse sim essencial, fica fora do
+bloco.
+
+### 22. As funções SECURITY DEFINER não são chamáveis pela API
+
+`generate_shopping_list` e `montar_semana_de_exemplo` recebem um id como
+parâmetro e rodam como dono do schema. Expostas via RPC — e o Postgres concede
+`EXECUTE` a `PUBLIC` por padrão — deixariam um usuário agir sobre o plano de
+outro. As duas são revogadas de `public` e concedidas apenas a `service_role`.
+Os gatilhos continuam funcionando porque rodam como dono.
+
+Há teste: `authenticated` chamando qualquer uma das duas recebe
+`permission denied`.
+
+### 23. O seed é reexecutável
+
+`npm run db:seed` lê `receitas-seed.json` da raiz ou de `scripts/`. Sem o
+arquivo, usa as 5 receitas de `lib/seed/receitas-padrao.ts` — nunca trava por
+falta dele.
+
+Rodar de novo atualiza a receita global de mesmo nome e substitui a lista de
+ingredientes dela, então editar o JSON e repetir funciona. Duas regras que
+valem registro:
+
+- **A deduplicação do catálogo usa `lower(nome)`**, exatamente o índice único
+  que existe em `ingredients`. Normalizar mais que o banco (tirando acento,
+  digamos) faria o script juntar o que o banco considera diferente.
+- **O mesmo ingrediente duas vezes na mesma receita** é somado quando a unidade
+  bate e levanta erro quando não bate. `recipe_ingredients` tem
+  `UNIQUE(recipe_id, ingredient_id)`, e converter às cegas estraga a lista de
+  compras em silêncio.
+
+A lógica pura vive em `lib/seed/`, separada do script, para ser testável sem
+projeto Supabase.
+
+### 24. Três scripts de administração
+
+| Script            | Para quê                                                    |
+| ----------------- | ----------------------------------------------------------- |
+| `npm run db:check`| as tabelas e a função existem? quanto já foi semeado?        |
+| `npm run db:seed` | popula o catálogo global de ingredientes e receitas          |
+| `npm run db:smoke`| cria um usuário descartável, confere o cadastro e o apaga    |
+
+Rodam com `--env-file-if-exists=.env.local`, recurso nativo do Node — sem
+`dotenv`. O de seed passa por `tsx` para resolver o alias `@/`.
+
+`db:smoke` é a verificação de ponta a ponta do cadastro: perfil, semana,
+21 horários, 6 preenchidos, lista somada. O usuário é apagado no `finally`,
+aconteça o que acontecer, e o `on delete cascade` leva o resto junto.
+
+### 25. Os arquivos de teste rodam em série
+
+`pool: "threads"` compartilha um processo só, e cada arquivo de teste de banco
+sobe um Postgres em WASM. Três heaps desses ao mesmo tempo derrubam o V8 com
+erro fatal. `fileParallelism: false` resolve, ao custo de alguns segundos.
+
 ---
 
 ## Estrutura
@@ -274,9 +351,10 @@ a aplicação consome a chave.
 app/                  rotas (App Router); tudo é Server Component por padrão
 components/ui/        primitivos do shadcn/ui
 lib/                  env, utilitários
+lib/seed/             receitas padrão e a lógica pura do seed
 lib/supabase/         clientes (browser, servidor, admin), rotas, tipos
 proxy.ts              sessão e proteção de rotas (o antigo middleware.ts)
-scripts/              utilitários de linha de comando
+scripts/              seed e diagnóstico do banco
 supabase/migrations/  o schema, em ordem de aplicação
 supabase/tests/       migrações exercitadas em Postgres real (PGlite)
 public/               estáticos
@@ -315,3 +393,6 @@ O terceiro ignora RLS — use só quando não houver outro caminho.
 | `npm run test`      | Vitest, execução única                     |
 | `npm run test:watch`| Vitest em modo observação                  |
 | `npm run db:sql`    | imprime as migrações em ordem, para colar  |
+| `npm run db:check`  | confere o schema aplicado no projeto       |
+| `npm run db:seed`   | popula o catálogo global de receitas       |
+| `npm run db:smoke`  | testa o cadastro de ponta a ponta          |
