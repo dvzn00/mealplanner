@@ -4,6 +4,7 @@ import Link from "next/link";
 import { CabecalhoDePagina } from "@/components/cabecalho-de-pagina";
 import { EstadoVazio } from "@/components/estado-vazio";
 import { Lista } from "@/components/lista-compras/lista";
+import { BotaoDePdf } from "@/components/planejamento/botao-de-pdf";
 import { Button } from "@/components/ui/button";
 import { ehDataIso, formatarPeriodo, segundaDaSemana } from "@/lib/data-iso";
 import { obterListaDeCompras } from "@/lib/data/lista-compras";
@@ -34,12 +35,15 @@ export default async function PaginaDaListaDeCompras({
         }
         acao={
           plano ? (
-            <Button asChild variant="outline">
-              <Link href={`/dashboard?semana=${plano.semana_inicio}`}>
-                <CalendarDays strokeWidth={1.75} aria-hidden="true" />
-                Ver a semana
-              </Link>
-            </Button>
+            <div className="flex flex-wrap items-center gap-3">
+              <BotaoDePdf semana={plano.semana_inicio} />
+              <Button asChild variant="outline">
+                <Link href={`/dashboard?semana=${plano.semana_inicio}`}>
+                  <CalendarDays strokeWidth={1.75} aria-hidden="true" />
+                  Ver a semana
+                </Link>
+              </Button>
+            </div>
           ) : null
         }
       />

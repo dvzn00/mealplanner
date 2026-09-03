@@ -7,6 +7,7 @@ import {
   BannerSomenteLeitura,
   BotaoCopiarSemana,
 } from "@/components/planejamento/acoes-da-semana";
+import { BotaoDePdf } from "@/components/planejamento/botao-de-pdf";
 import { NavegacaoDeSemanas } from "@/components/planejamento/navegacao-de-semanas";
 import { PlanejadorSemanal } from "@/components/planejamento/planejador-semanal";
 import { ehDataIso, segundaDaSemana } from "@/lib/data-iso";
@@ -64,6 +65,8 @@ export default async function PaginaDoPlanejamento({
               Lista de compras
             </Link>
           </Button>
+
+          <BotaoDePdf semana={plano.semanaInicio} />
 
           {!somenteLeitura && (
             <BotaoCopiarSemana

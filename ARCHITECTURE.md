@@ -22,7 +22,7 @@ O trabalho está dividido em blocos. Este arquivo é atualizado ao final de cada
 | 6     | Arraste de receitas (dnd-kit)                    | Concluído  |
 | 7     | Lista de compras em tempo real                   | Concluído  |
 | 8     | Copiar cardápio e histórico                      | Concluído  |
-| 9     | Geração de PDF                                   | Pendente   |
+| 9     | Geração de PDF                                   | Concluído  |
 | 10    | Importação de sugestões                          | Pendente   |
 | 11    | Polimento, responsividade e testes               | Pendente   |
 
@@ -680,6 +680,35 @@ a interface faz é não convidar a mexer no que já passou.
 O enunciado pede as anteriores. Listar também a atual e as futuras custa nada e
 evita a pergunta "cadê a semana que montei ontem para o mês que vem?". Cada uma
 vem com a sua etiqueta — já passou, esta semana, ainda vem.
+
+### 53. O PDF sai por GET, não por Server Action
+
+`/api/reports/generate-pdf?semana=…&lista=1` devolve o arquivo com
+`Content-Disposition: attachment`. O botão é um link comum: funciona com
+clique do meio, com "salvar como", e o navegador cuida do download sem
+JavaScript de apoio.
+
+O enunciado sugere buscar os dados por Server Action e gerar na rota. A rota lê
+os dados ela mesma, com o cliente do servidor e a sessão da requisição — a RLS
+continua sendo a fronteira, e não há uma ida a mais ao banco só para atravessar
+uma camada.
+
+`obterRelatorioDaSemana` lê sem criar, ao contrário de `obterOuCriarPlano`:
+pedir o PDF de uma semana que não existe deve devolver 404, não inventar uma
+semana vazia no banco.
+
+### 54. Helvetica no papel, Poppins na tela
+
+O PDF usa Helvetica, uma das fontes que todo leitor já tem, e que cobre os
+acentos do português. Embutir a Poppins acrescentaria uns 100 KB a cada arquivo
+para manter uma coerência que ninguém nota em uma folha impressa.
+
+A marca aparece na faixa verde do topo e nos títulos de seção; o corpo é preto
+sobre branco, porque isto vai para a impressora e para a porta da geladeira.
+
+O `@react-pdf/renderer` entra em `serverExternalPackages` no
+`next.config.ts`: ele tem o próprio renderizador e dependências de Node, e
+empacotá-lo junto quebra a rota.
 
 ---
 

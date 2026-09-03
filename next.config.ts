@@ -10,6 +10,9 @@ const supabaseHost = process.env.NEXT_PUBLIC_SUPABASE_URL
   : undefined;
 
 const nextConfig: NextConfig = {
+  // O @react-pdf/renderer tem o próprio renderizador e dependências nativas de
+  // Node; empacotá-lo junto quebra a rota de PDF.
+  serverExternalPackages: ["@react-pdf/renderer"],
   images: {
     remotePatterns: supabaseHost
       ? [

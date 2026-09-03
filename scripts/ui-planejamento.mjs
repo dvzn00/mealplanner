@@ -484,6 +484,49 @@ try {
     atualDepois.length === daPassada.length,
     `${atualDepois.length} contra ${daPassada.length}`,
   );
+  // --- Bloco 9: PDF ---
+  console.log("");
+
+  await pagina.goto(`${BASE}/dashboard`, { waitUntil: "networkidle" });
+
+  const comLista = await pagina.request.get(
+    `${BASE}/api/reports/generate-pdf?semana=${segundaAtual()}&lista=1`,
+  );
+  const bytes = await comLista.body();
+
+  conferir(
+    "a rota devolve um PDF de verdade",
+    comLista.status() === 200 && bytes.subarray(0, 4).toString() === "%PDF",
+    `${comLista.status()} / ${bytes.subarray(0, 4).toString()}`,
+  );
+  conferir(
+    "com cabeçalho de download e nome da semana",
+    (comLista.headers()["content-disposition"] ?? "").includes(
+      `meal-planner-${segundaAtual()}.pdf`,
+    ),
+    comLista.headers()["content-disposition"],
+  );
+
+  const semLista = await pagina.request.get(
+    `${BASE}/api/reports/generate-pdf?semana=${segundaAtual()}&lista=0`,
+  );
+  const bytesSemLista = await semLista.body();
+  conferir(
+    "sem a lista de compras o arquivo é menor",
+    bytesSemLista.length < bytes.length,
+    `${bytesSemLista.length} contra ${bytes.length} bytes`,
+  );
+
+  // O botão da interface, do clique ao download.
+  await pagina.getByRole("button", { name: "Gerar PDF" }).click();
+  const baixando = pagina.waitForEvent("download", { timeout: 20000 });
+  await pagina.getByRole("link", { name: "Baixar" }).click();
+  const arquivo = await baixando;
+  conferir(
+    "o botão baixa o arquivo com o nome certo",
+    arquivo.suggestedFilename() === `meal-planner-${segundaAtual()}.pdf`,
+    arquivo.suggestedFilename(),
+  );
 } finally {
   if (navegador) await navegador.close();
   if (userId) {
