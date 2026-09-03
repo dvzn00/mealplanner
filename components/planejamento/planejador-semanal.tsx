@@ -150,7 +150,13 @@ export function PlanejadorSemanal({
           de espremer o texto até virar reticências. No celular, cada dia ocupa
           a largura inteira.
         */}
-        <div className="-mx-4 overflow-x-auto px-4 pb-2 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
+        {/*
+          `relative` não é decorativo: os rótulos `sr-only` dos botões são
+          `position: absolute`, e sem um bloco de contenção aqui eles escapam
+          do clipe do contêiner e fazem a página inteira rolar de lado — uns
+          200px de nada, que no toque viram um deslize acidental.
+        */}
+        <div className="relative -mx-4 min-w-0 overflow-x-auto px-4 pb-2 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
           <div className="grid gap-3 md:min-w-[63rem] md:grid-cols-7">
             {dias.map((dia) => (
               <ColunaDoDia

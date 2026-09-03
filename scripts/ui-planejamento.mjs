@@ -296,6 +296,11 @@ try {
     .getByRole("dialog")
     .getByRole("button", { name: "Remover horário" })
     .click();
+  // Confirmação: remover um horário não é desfazível com um clique.
+  await pagina
+    .getByRole("alertdialog")
+    .getByRole("button", { name: "Remover", exact: true })
+    .click();
   await pagina.waitForTimeout(1500);
 
   const semLanche = await slotsDoDia(userId, segundaAtual(), "segunda");

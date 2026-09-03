@@ -24,7 +24,7 @@ O trabalho está dividido em blocos. Este arquivo é atualizado ao final de cada
 | 8     | Copiar cardápio e histórico                      | Concluído  |
 | 9     | Geração de PDF                                   | Concluído  |
 | 10    | Importação de sugestões                          | Concluído  |
-| 11    | Polimento, responsividade e testes               | Pendente   |
+| 11    | Polimento, responsividade e testes               | Concluído  |
 
 ## Stack instalada
 
@@ -740,6 +740,79 @@ O catálogo tem poucas dezenas de receitas e já chega inteiro na página, com o
 ingredientes de cada uma. Filtrar no cliente responde a cada tecla, sem uma ida
 ao servidor por letra digitada. Se o catálogo crescer para milhares, isso vira
 busca no banco — mas aí a página também deixa de carregar tudo de uma vez.
+
+### 58. Confirmação só onde não dá para desfazer com um clique
+
+Remover um horário abre um `AlertDialog` — ele leva junto a receita e a
+estrutura do dia. Tirar a receita de um horário, não: a receita continua no
+painel, e recolocá-la é um arraste.
+
+Confirmação em excesso ensina a pessoa a clicar "sim" sem ler, e aí a única
+que importava passa despercebida.
+
+### 59. Aviso onde o efeito não está à vista
+
+Criar, salvar e remover horário, copiar dia ou semana, importar receita — todas
+fecham um diálogo ou mudam algo fora da tela, então avisam pelo `sonner`.
+
+Arrastar não avisa. A receita aparece no horário no mesmo instante; um aviso a
+cada arraste viraria ruído justamente na ação mais repetida do produto.
+
+### 60. Exceção nunca escapa de uma Server Action
+
+`lib/acoes.ts` define o contrato: toda ação devolve `{ sucesso }`, e
+`protegida` é o último anteparo — banco fora do ar, rede caindo no meio, o que
+for, vira a mesma resposta amigável, com o erro original indo para o log do
+servidor e não para a tela.
+
+As ações que redirecionam ficam de fora do anteparo: `redirect()` funciona
+lançando, e o `catch` engoliria o redirecionamento.
+
+`exigirLinha` fecha um buraco mais sutil. Com RLS, tentar escrever na linha de
+outra pessoa não dá erro — afeta zero linhas em silêncio. Sem essa checagem, a
+interface diria "salvo" para uma gravação que não aconteceu. Por isso cada
+escrita volta com a linha atingida.
+
+### 61. Continua sem checagem de dono duplicada
+
+O enunciado pede para validar permissões na aplicação além da RLS. Não é o que
+está aqui, e a razão é concreta: a regra de dono já existe em oito políticas de
+RLS, testadas por dezessete casos em Postgres real. Reescrevê-la em cada ação
+cria duas fontes de verdade que vão divergir — e a que estiver errada será a da
+aplicação, porque é a que ninguém testa contra o banco.
+
+O que a aplicação faz é a parte que a RLS não pode fazer: notar que a escrita
+não alcançou nada e dizer isso à pessoa. O efeito prático é o mesmo — agir
+sobre o recurso de outro falha e explica —, sem a segunda cópia da regra.
+
+### 62. A responsividade é medida, não olhada
+
+`npm run screenshots` confere, em cada largura e cada rota, se
+`documentElement.scrollWidth` passa da viewport, e falha se passar.
+
+Achou dois defeitos que a captura de tela não denunciava. O primeiro: itens de
+grade sem `min-w-0` não rolam, esticam — a faixa de receitas empurrava a página
+inteira no celular. O segundo é mais sutil: os rótulos `sr-only` dos botões são
+`position: absolute`, e sem um bloco de contenção no contêiner de rolagem eles
+escapam do clipe e somam 200px de nada à direita. Invisível na tela, e um
+deslize lateral acidental no toque.
+
+`relative` no contêiner resolve o segundo. Vale para qualquer lugar que combine
+`overflow-x-auto` com conteúdo acessível escondido.
+
+### 63. Sem memoização nem virtualização
+
+A maior lista do produto tem 21 horários; o painel de receitas tem algumas
+dezenas. `React.memo` com `useCallback` em toda a árvore custaria legibilidade
+para economizar renderizações que ninguém percebe — e sem o `memo` junto, o
+`useCallback` sozinho não economiza nada.
+
+O único `useMemo` do projeto está na busca das sugestões, onde ele evita
+refiltrar a cada tecla.
+
+Onde isso muda: catálogo com milhares de receitas pede busca no banco e
+paginação antes de pedir virtualização — a página deixaria de carregar tudo de
+uma vez, e o problema de renderização some junto.
 
 ---
 

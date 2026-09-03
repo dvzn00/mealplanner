@@ -48,8 +48,3 @@ export const moverReceitaSchema = z.object({
 export type CriarSlotInput = z.input<typeof criarSlotSchema>;
 export type EditarSlotInput = z.infer<typeof editarSlotSchema>;
 
-/** O que uma ação do planejamento devolve. */
-export interface ResultadoDaAcao {
-  sucesso: boolean;
-  erro?: string;
-}

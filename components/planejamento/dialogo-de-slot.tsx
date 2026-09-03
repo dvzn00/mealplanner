@@ -3,6 +3,18 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useState, useTransition } from "react";
 import { useForm } from "react-hook-form";
+import { toast } from "sonner";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { AvisoDoFormulario, CampoDeTexto } from "@/components/auth/campos";
 import { Button } from "@/components/ui/button";
 import {
@@ -93,8 +105,12 @@ export function DialogoDeSlot({
           })
         : await editarSlot({ slotId: estado.slotId, ...campos });
 
-      if (resultado.sucesso) fechar();
-      else setErro(resultado.erro ?? "Não consegui salvar.");
+      if (resultado.sucesso) {
+        toast.success(criando ? "Refeição criada." : "Refeição salva.");
+        fechar();
+      } else {
+        setErro(resultado.erro ?? "Não consegui salvar.");
+      }
     });
   }
 
@@ -103,8 +119,12 @@ export function DialogoDeSlot({
 
     iniciarTransicao(async () => {
       const resultado = await removerSlot(estado.slotId);
-      if (resultado.sucesso) fechar();
-      else setErro(resultado.erro ?? "Não consegui remover.");
+      if (resultado.sucesso) {
+        toast.success("Horário removido.");
+        fechar();
+      } else {
+        setErro(resultado.erro ?? "Não consegui remover.");
+      }
     });
   }
 
@@ -158,14 +178,31 @@ export function DialogoDeSlot({
 
           <DialogFooter className="gap-2 sm:justify-between">
             {!criando && (
-              <Button
-                type="button"
-                variant="destructive"
-                onClick={remover}
-                disabled={salvando}
-              >
-                Remover horário
-              </Button>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button type="button" variant="destructive" disabled={salvando}>
+                    Remover horário
+                  </Button>
+                </AlertDialogTrigger>
+
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Remover este horário?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      {estado?.modo === "editar"
+                        ? `"${estado.nomeRefeicao}" sai de ${estado.diaLongo} e a receita que estiver nele volta para o painel. Os outros dias não mudam.`
+                        : ""}
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Manter</AlertDialogCancel>
+                    <AlertDialogAction onClick={remover}>
+                      Remover
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             )}
             <Button type="submit" disabled={salvando}>
               {salvando ? "Salvando…" : criando ? "Adicionar" : "Salvar"}

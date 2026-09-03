@@ -19,7 +19,10 @@ export function PainelDeReceitas({ receitas }: { receitas: ReceitaDoSlot[] }) {
   return (
     <aside
       aria-label="Receitas para arrastar"
-      className="rounded-3xl bg-card p-4 shadow-card"
+      // `min-w-0` não é enfeite: sem ele o item de grade adota a largura do
+      // conteúdo, a faixa de receitas empurra a página e a tela inteira passa
+      // a rolar na horizontal no celular.
+      className="min-w-0 rounded-3xl bg-card p-4 shadow-card"
     >
       <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
         <h2 className="text-sm font-semibold text-text-dark">Receitas</h2>

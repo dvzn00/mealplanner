@@ -29,6 +29,23 @@ const PRIVADAS = [
   "/perfil",
 ];
 
+const transbordos = [];
+
+/**
+ * Página que rola na horizontal no celular é quase sempre um descuido: um
+ * item de grade sem `min-w-0`, uma tabela sem contêiner que role sozinho.
+ * Medir é mais confiável que olhar captura por captura.
+ */
+async function conferirLargura(pagina, largura, rota) {
+  const rolagem = await pagina.evaluate(
+    () => document.documentElement.scrollWidth,
+  );
+
+  if (rolagem > largura + 1) {
+    transbordos.push(`${largura}px ${rota}: rola até ${rolagem}px`);
+  }
+}
+
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const secret = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
@@ -74,6 +91,7 @@ try {
     for (const rota of PUBLICAS) {
       await pagina.goto(`${BASE}${rota}`, { waitUntil: "networkidle" });
       await pagina.screenshot({ path: nomeDoArquivo(largura, rota) });
+      await conferirLargura(pagina, largura, rota);
     }
 
     await pagina.goto(`${BASE}/login`, { waitUntil: "networkidle" });
@@ -88,6 +106,7 @@ try {
         path: nomeDoArquivo(largura, rota),
         fullPage: true,
       });
+      await conferirLargura(pagina, largura, rota);
     }
 
     // O menu deslizante só existe abaixo de lg.
@@ -111,3 +130,11 @@ try {
 }
 
 console.log(`\nImagens em ${SAIDA}/`);
+
+if (transbordos.length > 0) {
+  console.error("\nPáginas rolando na horizontal:");
+  for (const caso of transbordos) console.error(`  ${caso}`);
+  process.exit(1);
+}
+
+console.log("Nenhuma página rola na horizontal.");
