@@ -38,6 +38,7 @@ import {
   type EstadoDoDialogo,
   type ReceitaParaEscolha,
 } from "./dialogo-de-slot";
+import { DialogoDeCopia, type EstadoDaCopia } from "./dialogo-de-copia";
 import { PainelDeReceitas } from "./painel-de-receitas";
 import { EtiquetaArrastada } from "./receita-arrastavel";
 
@@ -57,14 +58,18 @@ export function PlanejadorSemanal({
   receitas,
   receitasParaEscolha,
   diaDeHoje,
+  somenteLeitura,
 }: {
   plano: PlanoDaSemana;
   receitas: ReceitaDoSlot[];
   receitasParaEscolha: ReceitaParaEscolha[];
   /** `null` quando a semana mostrada não é a corrente. */
   diaDeHoje: DiaDaSemana | null;
+  /** Semana passada: dá para ver e copiar, não para editar. */
+  somenteLeitura: boolean;
 }) {
   const [dialogo, setDialogo] = useState<EstadoDoDialogo | null>(null);
+  const [copia, setCopia] = useState<EstadoDaCopia | null>(null);
   const [arrastando, setArrastando] = useState<ReceitaDoSlot | null>(null);
   const [dias, aplicar] = useOptimistic(plano.dias, aplicarMovimento);
   const [, iniciarTransicao] = useTransition();
@@ -93,6 +98,7 @@ export function PlanejadorSemanal({
 
   function aoSoltar(evento: DragEndEvent) {
     setArrastando(null);
+    if (somenteLeitura) return;
 
     const arrastavel = lerArrastavel(String(evento.active.id));
     const destinoId = evento.over ? lerAlvo(String(evento.over.id)) : null;
@@ -136,7 +142,7 @@ export function PlanejadorSemanal({
       accessibility={{ announcements: AVISOS }}
     >
       <div className="grid gap-4">
-        <PainelDeReceitas receitas={receitas} />
+        {!somenteLeitura && <PainelDeReceitas receitas={receitas} />}
 
         {/*
           Sete colunas precisam de uns 140px cada para caber "Café da manhã" e
@@ -151,6 +157,14 @@ export function PlanejadorSemanal({
                 key={dia.slug}
                 dia={dia}
                 ehHoje={dia.slug === diaDeHoje}
+                somenteLeitura={somenteLeitura}
+                aoCopiar={() =>
+                  setCopia({
+                    modo: "dia",
+                    dia: dia.slug,
+                    diaLongo: dia.longo,
+                  })
+                }
                 aoAdicionar={() =>
                   setDialogo({
                     modo: "novo",
@@ -182,6 +196,13 @@ export function PlanejadorSemanal({
         planId={plano.id}
         receitas={receitasParaEscolha}
         aoFechar={() => setDialogo(null)}
+      />
+
+      <DialogoDeCopia
+        estado={copia}
+        planId={plano.id}
+        semanaDoPlano={plano.semanaInicio}
+        aoFechar={() => setCopia(null)}
       />
     </DndContext>
   );

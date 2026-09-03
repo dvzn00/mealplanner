@@ -61,6 +61,28 @@ export async function obterOuCriarPlano(
   segundaIso: string,
 ): Promise<PlanoDaSemana | null> {
   const supabase = await createClient();
+  const plano = await garantirPlanoParaSemana(supabase, segundaIso);
+  if (!plano) return null;
+
+  const { data: slots } = await supabase
+    .from("plan_slots")
+    .select(CAMPOS_DO_SLOT)
+    .eq("plan_id", plano.id)
+    .order("posicao");
+
+  return montarSemana(plano, slots ?? []);
+}
+
+export type Cliente = Awaited<ReturnType<typeof createClient>>;
+
+/**
+ * O plano de uma semana, criado com os horários padrão se ainda não existir.
+ * Usado pela página e pela cópia de cardápio, que precisa de um destino.
+ */
+export async function garantirPlanoParaSemana(
+  supabase: Cliente,
+  segundaIso: string,
+): Promise<LinhaDoPlano | null> {
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -72,18 +94,10 @@ export async function obterOuCriarPlano(
 
   await garantirHorariosPadrao(supabase, plano.id);
 
-  const { data: slots } = await supabase
-    .from("plan_slots")
-    .select(CAMPOS_DO_SLOT)
-    .eq("plan_id", plano.id)
-    .order("posicao");
-
-  return montarSemana(plano, slots ?? []);
+  return plano;
 }
 
-type Cliente = Awaited<ReturnType<typeof createClient>>;
-
-interface LinhaDoPlano {
+export interface LinhaDoPlano {
   id: string;
   semana_inicio: string;
   semana_fim: string;

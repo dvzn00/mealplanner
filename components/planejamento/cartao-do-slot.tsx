@@ -20,10 +20,12 @@ import { cn } from "@/lib/utils";
 export function CartaoDoSlot({
   slot,
   diaLongo,
+  somenteLeitura,
   aoEditar,
 }: {
   slot: SlotDoPlano;
   diaLongo: string;
+  somenteLeitura: boolean;
   aoEditar: () => void;
 }) {
   const [limpando, iniciarTransicao] = useTransition();
@@ -40,9 +42,20 @@ export function CartaoDoSlot({
     isDragging,
   } = useDraggable({
     id: idDoSlot(slot.id),
-    disabled: receita === null,
+    disabled: somenteLeitura || receita === null,
     data: { receita },
   });
+
+  const cabecalho = (
+    <>
+      <span className="block text-xs font-medium tabular-nums text-text-muted">
+        {formatarHorario(slot.horario)}
+      </span>
+      <span className="mt-0.5 block text-sm font-semibold leading-snug text-text-dark">
+        {slot.nomeRefeicao}
+      </span>
+    </>
+  );
 
   return (
     <article
@@ -53,19 +66,18 @@ export function CartaoDoSlot({
         limpando && "opacity-60",
       )}
     >
-      <button
-        type="button"
-        onClick={aoEditar}
-        className="block w-full rounded-lg text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-strong"
-      >
-        <span className="block text-xs font-medium tabular-nums text-text-muted">
-          {formatarHorario(slot.horario)}
-        </span>
-        <span className="mt-0.5 block text-sm font-semibold leading-snug text-text-dark">
-          {slot.nomeRefeicao}
-        </span>
-        <span className="sr-only">— editar nome e horário</span>
-      </button>
+      {somenteLeitura ? (
+        <div>{cabecalho}</div>
+      ) : (
+        <button
+          type="button"
+          onClick={aoEditar}
+          className="block w-full rounded-lg text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-strong"
+        >
+          {cabecalho}
+          <span className="sr-only">— editar nome e horário</span>
+        </button>
+      )}
 
       {receita ? (
         <div
@@ -77,6 +89,7 @@ export function CartaoDoSlot({
         >
           <div className="flex items-start gap-1.5">
             {/* A alça é só o punho: assim a lixeira continua clicável. */}
+            {!somenteLeitura && (
             <button
               type="button"
               aria-label={`Arrastar ${receita.nome} de ${slot.nomeRefeicao} de ${diaLongo}`}
@@ -90,6 +103,7 @@ export function CartaoDoSlot({
                 aria-hidden="true"
               />
             </button>
+            )}
 
             {receita.imagem_url ? (
               <Image
@@ -113,6 +127,7 @@ export function CartaoDoSlot({
               {receita.calorias} kcal
             </span>
 
+            {!somenteLeitura && (
             <button
               type="button"
               aria-label={`Tirar ${receita.nome} de ${slot.nomeRefeicao} de ${diaLongo}`}
@@ -130,6 +145,7 @@ export function CartaoDoSlot({
                 aria-hidden="true"
               />
             </button>
+            )}
           </div>
         </div>
       ) : (
@@ -139,7 +155,7 @@ export function CartaoDoSlot({
             isOver && "border-primary bg-primary-soft text-primary-deep",
           )}
         >
-          Arraste uma receita aqui
+          {somenteLeitura ? "Sem receita" : "Arraste uma receita aqui"}
         </p>
       )}
     </article>

@@ -3,6 +3,10 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import {
+  BannerSomenteLeitura,
+  BotaoCopiarSemana,
+} from "@/components/planejamento/acoes-da-semana";
 import { NavegacaoDeSemanas } from "@/components/planejamento/navegacao-de-semanas";
 import { PlanejadorSemanal } from "@/components/planejamento/planejador-semanal";
 import { ehDataIso, segundaDaSemana } from "@/lib/data-iso";
@@ -35,7 +39,10 @@ export default async function PaginaDoPlanejamento({
 
   if (!plano) redirect(ROTA_LOGIN);
 
-  const ehSemanaAtual = plano.semanaInicio === segundaDaSemanaAtual();
+  const semanaCorrente = segundaDaSemanaAtual();
+  const ehSemanaAtual = plano.semanaInicio === semanaCorrente;
+  // Semana passada é consulta: dá para ver e copiar, não para editar.
+  const somenteLeitura = plano.semanaInicio < semanaCorrente;
 
   return (
     <div className="grid gap-6">
@@ -58,6 +65,13 @@ export default async function PaginaDoPlanejamento({
             </Link>
           </Button>
 
+          {!somenteLeitura && (
+            <BotaoCopiarSemana
+              planId={plano.id}
+              semanaDoPlano={plano.semanaInicio}
+            />
+          )}
+
           <NavegacaoDeSemanas
             semanaInicio={plano.semanaInicio}
             semanaFim={plano.semanaFim}
@@ -65,11 +79,14 @@ export default async function PaginaDoPlanejamento({
         </div>
       </header>
 
+      {somenteLeitura && <BannerSomenteLeitura planId={plano.id} />}
+
       <PlanejadorSemanal
         plano={plano}
         receitas={receitas}
         receitasParaEscolha={receitas.map(({ id, nome }) => ({ id, nome }))}
         diaDeHoje={ehSemanaAtual ? diaDeHoje() : null}
+        somenteLeitura={somenteLeitura}
       />
     </div>
   );

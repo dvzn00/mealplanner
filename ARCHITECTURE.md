@@ -21,7 +21,7 @@ O trabalho está dividido em blocos. Este arquivo é atualizado ao final de cada
 | 5     | Grade semanal e navegação entre semanas          | Concluído  |
 | 6     | Arraste de receitas (dnd-kit)                    | Concluído  |
 | 7     | Lista de compras em tempo real                   | Concluído  |
-| 8     | Copiar cardápio e histórico                      | Pendente   |
+| 8     | Copiar cardápio e histórico                      | Concluído  |
 | 9     | Geração de PDF                                   | Pendente   |
 | 10    | Importação de sugestões                          | Pendente   |
 | 11    | Polimento, responsividade e testes               | Pendente   |
@@ -637,6 +637,49 @@ do planejamento. O gatilho garante o dado; a revalidação garante a tela.
 "Mostrar só o que falta" é preferência do momento, não algo que se compartilha
 por link — fica em estado de cliente. A semana, essa sim, vai na URL, porque
 "me manda sua lista da semana que vem" é um pedido real.
+
+### 49. Copiar substitui o destino, e a falha é recuperável
+
+"Copiar segunda para quarta" quer dizer que quarta fica igual a segunda — não
+que quarta ganhe seis refeições. Por isso o destino é limpo antes.
+
+A limpeza e a inserção vão em duas requisições, ou seja, duas transações. Se a
+segunda falhar, o destino fica vazio — que é justamente o estado que a página
+sabe consertar: ao abrir uma semana sem nenhum horário, ela recria os três
+padrão. Falha visível e recuperável vale mais que meio cardápio.
+
+A lista de compras do destino não precisa de nada: o gatilho de `plan_slots` a
+refaz dentro da mesma transação da escrita.
+
+O registro em `plan_copies` é informativo — vira o "copiada da semana de…" no
+histórico. Se ele falhar, a cópia já aconteceu e não vale desfazê-la.
+
+### 50. A semana de destino é um campo de data
+
+Em vez de uma lista "anterior / próxima", a cópia pede uma data e resolve para
+a segunda-feira daquela semana, mostrando o período abaixo do campo. Assim
+qualquer semana serve, sem uma lista relativa que cresce.
+
+Ao copiar da semana passada pelo aviso de leitura, não há diálogo: o destino é
+sempre a semana corrente, que é o único motivo de alguém estar olhando um
+cardápio antigo com vontade de reaproveitá-lo.
+
+### 51. Somente leitura é derivado da data
+
+Não há coluna "fechada" no banco. `semanaInicio < segundaDaSemanaAtual()` já
+diz tudo, e é a mesma conta em qualquer lugar. Semana passada esconde o painel
+de arraste, o botão de adicionar refeição, a alça e a lixeira, e o cabeçalho do
+horário deixa de ser botão.
+
+O bloqueio é de interface, não de segurança: nada impede uma requisição direta
+de editar uma semana antiga, e nem deveria — é o plano da própria pessoa. O que
+a interface faz é não convidar a mexer no que já passou.
+
+### 52. O histórico lista todas as semanas
+
+O enunciado pede as anteriores. Listar também a atual e as futuras custa nada e
+evita a pergunta "cadê a semana que montei ontem para o mês que vem?". Cada uma
+vem com a sua etiqueta — já passou, esta semana, ainda vem.
 
 ---
 

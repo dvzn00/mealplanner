@@ -78,6 +78,63 @@ function horarioDoDia(pagina, dia, indice) {
   return pagina.getByRole("region", { name: dia }).locator("article").nth(indice);
 }
 
+/**
+ * Põe receitas em segunda e terça, como a semana de exemplo do cadastro faria.
+ * O teste não depende dela para poder medir o que se propõe a medir.
+ */
+async function prepararSemana(userId) {
+  const { data: plano } = await supabase
+    .from("weekly_plans")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("semana_inicio", segundaAtual())
+    .maybeSingle();
+
+  if (!plano) return;
+
+  const [{ data: slots }, { data: receitas }] = await Promise.all([
+    supabase
+      .from("plan_slots")
+      .select("id, dia_da_semana, posicao")
+      .eq("plan_id", plano.id)
+      .in("dia_da_semana", ["segunda", "terca"])
+      .order("posicao"),
+    supabase.from("recipes").select("id").is("user_id", null).order("calorias"),
+  ]);
+
+  if (!slots?.length || !receitas?.length) return;
+
+  const emOrdem = [...slots].sort(
+    (a, b) =>
+      a.dia_da_semana.localeCompare(b.dia_da_semana) || a.posicao - b.posicao,
+  );
+
+  for (const [indice, slot] of emOrdem.entries()) {
+    await supabase
+      .from("plan_slots")
+      .update({ recipe_id: receitas[indice % receitas.length].id })
+      .eq("id", slot.id);
+  }
+}
+
+async function todosOsSlots(userId, semanaInicio) {
+  const { data: plano } = await supabase
+    .from("weekly_plans")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("semana_inicio", semanaInicio)
+    .maybeSingle();
+
+  if (!plano) return [];
+
+  const { data } = await supabase
+    .from("plan_slots")
+    .select("id, dia_da_semana, nome_refeicao, horario, recipe_id")
+    .eq("plan_id", plano.id);
+
+  return data ?? [];
+}
+
 async function slotsDoDia(userId, semanaInicio, dia) {
   const { data: plano } = await supabase
     .from("weekly_plans")
@@ -124,6 +181,10 @@ try {
   await pagina.getByLabel("Senha", { exact: true }).fill(senha);
   await pagina.getByRole("button", { name: "Entrar" }).click();
   await pagina.waitForURL("**/dashboard", { timeout: 20000 });
+
+  // A visita acima criou o plano; agora entram as receitas.
+  await prepararSemana(userId);
+  await pagina.reload({ waitUntil: "networkidle" });
 
   // --- a semana corrente carrega inteira ---
   // Seletor pelas colunas de dia, e não por `role=region`: o painel de
@@ -323,6 +384,105 @@ try {
     "a lista de compras continua sendo refeita a cada mudança",
     (itens ?? 0) > 0,
     `${itens} item(ns)`,
+  );
+  // --- Bloco 8: copiar dia, copiar semana, histórico, somente leitura ---
+  console.log("");
+
+  await pagina.goto(`${BASE}/dashboard`, { waitUntil: "networkidle" });
+  const segundaOrigem = await slotsDoDia(userId, segundaAtual(), "segunda");
+
+  await pagina
+    .getByRole("button", { name: "Copiar Segunda para outro dia" })
+    .click();
+  const dialogoCopia = pagina.getByRole("dialog");
+  await dialogoCopia.getByLabel("Dia de destino").selectOption("quarta");
+  await dialogoCopia.getByRole("button", { name: "Copiar" }).click();
+  await pagina.waitForTimeout(2000);
+
+  const quartaCopiada = await slotsDoDia(userId, segundaAtual(), "quarta");
+  conferir(
+    "copiar dia deixa o destino igual à origem",
+    quartaCopiada.length === segundaOrigem.length &&
+      quartaCopiada.map((s) => `${s.nome_refeicao}|${s.horario}|${s.recipe_id}`)
+        .join(" ") ===
+        segundaOrigem
+          .map((s) => `${s.nome_refeicao}|${s.horario}|${s.recipe_id}`)
+          .join(" "),
+    `${quartaCopiada.length} horário(s) contra ${segundaOrigem.length}`,
+  );
+
+  // --- copiar a semana inteira para a seguinte ---
+  await pagina.getByRole("button", { name: "Copiar semana" }).click();
+  await pagina
+    .getByRole("dialog")
+    .getByRole("button", { name: "Copiar" })
+    .click();
+  await pagina.waitForTimeout(2500);
+
+  const origemDaSemana = await todosOsSlots(userId, segundaAtual());
+  const destinoDaSemana = await todosOsSlots(userId, proxima);
+  conferir(
+    "copiar semana replica todos os horários",
+    destinoDaSemana.length === origemDaSemana.length &&
+      destinoDaSemana.filter((s) => s.recipe_id).length ===
+        origemDaSemana.filter((s) => s.recipe_id).length,
+    `${destinoDaSemana.length} horário(s) contra ${origemDaSemana.length}`,
+  );
+
+  // --- histórico ---
+  await pagina.goto(`${BASE}/historico`, { waitUntil: "networkidle" });
+  const semanasNoHistorico = await pagina.getByRole("article").count();
+  conferir(
+    "o histórico lista as semanas do usuário",
+    semanasNoHistorico >= 2,
+    semanasNoHistorico,
+  );
+
+  const temBadge = await pagina
+    .getByText(/^Copiada da semana de/)
+    .first()
+    .isVisible()
+    .catch(() => false);
+  conferir("a semana copiada mostra de onde veio", temBadge, temBadge);
+
+  // --- semana passada: só leitura ---
+  const passada = somarDias(segundaAtual(), -14);
+  await pagina.goto(`${BASE}/dashboard?semana=${passada}`, {
+    waitUntil: "networkidle",
+  });
+
+  const temBanner = await pagina
+    .getByText(/já passou|Você está vendo uma semana que já passou/)
+    .first()
+    .isVisible()
+    .catch(() => false);
+  conferir("semana passada mostra o aviso de leitura", temBanner, temBanner);
+
+  const semAdicionar =
+    (await pagina.getByRole("button", { name: /^Adicionar refeição/ }).count()) ===
+    0;
+  conferir(
+    "semana passada não oferece adicionar refeição",
+    semAdicionar,
+    semAdicionar,
+  );
+
+  const semPainel =
+    (await pagina.getByRole("button", { name: /para um horário$/ }).count()) === 0;
+  conferir("semana passada esconde o painel de arraste", semPainel, semPainel);
+
+  await pagina
+    .getByRole("button", { name: "Copiar para esta semana" })
+    .click();
+  await pagina.waitForURL("**/dashboard", { timeout: 20000 });
+  await pagina.waitForTimeout(1500);
+
+  const atualDepois = await todosOsSlots(userId, segundaAtual());
+  const daPassada = await todosOsSlots(userId, passada);
+  conferir(
+    "copiar a semana passada para a atual traz os horários dela",
+    atualDepois.length === daPassada.length,
+    `${atualDepois.length} contra ${daPassada.length}`,
   );
 } finally {
   if (navegador) await navegador.close();
