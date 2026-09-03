@@ -5,7 +5,7 @@
 **Pelo SQL Editor** — o caminho mais curto para um projeto que já existe:
 
 ```bash
-npm run db:sql > schema.sql
+npm run --silent db:sql > schema.sql
 ```
 
 Cole o conteúdo no SQL Editor do projeto e execute. A ordem dos arquivos

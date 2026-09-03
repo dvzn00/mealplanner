@@ -49,10 +49,12 @@ alter table public.plan_copies        enable row level security;
 -- ---------------------------------------------------------------------------
 -- profiles
 -- ---------------------------------------------------------------------------
+drop policy if exists "profiles: leitura do próprio perfil" on public.profiles;
 create policy "profiles: leitura do próprio perfil"
   on public.profiles for select to authenticated
   using (id = (select auth.uid()));
 
+drop policy if exists "profiles: edição do próprio perfil" on public.profiles;
 create policy "profiles: edição do próprio perfil"
   on public.profiles for update to authenticated
   using (id = (select auth.uid()))
@@ -62,19 +64,23 @@ create policy "profiles: edição do próprio perfil"
 -- recipes — user_id nulo é receita global, visível para todo mundo e
 -- editável por ninguém (só pelo service_role, que ignora RLS).
 -- ---------------------------------------------------------------------------
+drop policy if exists "recipes: leitura das próprias e das globais" on public.recipes;
 create policy "recipes: leitura das próprias e das globais"
   on public.recipes for select to authenticated
   using (user_id is null or user_id = (select auth.uid()));
 
+drop policy if exists "recipes: criação em nome próprio" on public.recipes;
 create policy "recipes: criação em nome próprio"
   on public.recipes for insert to authenticated
   with check (user_id = (select auth.uid()));
 
+drop policy if exists "recipes: edição das próprias" on public.recipes;
 create policy "recipes: edição das próprias"
   on public.recipes for update to authenticated
   using (user_id = (select auth.uid()))
   with check (user_id = (select auth.uid()));
 
+drop policy if exists "recipes: remoção das próprias" on public.recipes;
 create policy "recipes: remoção das próprias"
   on public.recipes for delete to authenticated
   using (user_id = (select auth.uid()));
@@ -82,6 +88,7 @@ create policy "recipes: remoção das próprias"
 -- ---------------------------------------------------------------------------
 -- ingredients — catálogo público de leitura. Escrita só pelo service_role.
 -- ---------------------------------------------------------------------------
+drop policy if exists "ingredients: catálogo é público" on public.ingredients;
 create policy "ingredients: catálogo é público"
   on public.ingredients for select to anon, authenticated
   using (true);
@@ -89,6 +96,7 @@ create policy "ingredients: catálogo é público"
 -- ---------------------------------------------------------------------------
 -- recipe_ingredients — acompanha a receita
 -- ---------------------------------------------------------------------------
+drop policy if exists "recipe_ingredients: leitura acompanha a receita" on public.recipe_ingredients;
 create policy "recipe_ingredients: leitura acompanha a receita"
   on public.recipe_ingredients for select to authenticated
   using (
@@ -99,6 +107,7 @@ create policy "recipe_ingredients: leitura acompanha a receita"
     )
   );
 
+drop policy if exists "recipe_ingredients: escrita só nas receitas próprias" on public.recipe_ingredients;
 create policy "recipe_ingredients: escrita só nas receitas próprias"
   on public.recipe_ingredients for all to authenticated
   using (
@@ -117,10 +126,12 @@ create policy "recipe_ingredients: escrita só nas receitas próprias"
 -- ---------------------------------------------------------------------------
 -- weekly_plans
 -- ---------------------------------------------------------------------------
+drop policy if exists "weekly_plans: leitura dos próprios" on public.weekly_plans;
 create policy "weekly_plans: leitura dos próprios"
   on public.weekly_plans for select to authenticated
   using (user_id = (select auth.uid()));
 
+drop policy if exists "weekly_plans: escrita dos próprios" on public.weekly_plans;
 create policy "weekly_plans: escrita dos próprios"
   on public.weekly_plans for all to authenticated
   using (user_id = (select auth.uid()))
@@ -129,6 +140,7 @@ create policy "weekly_plans: escrita dos próprios"
 -- ---------------------------------------------------------------------------
 -- plan_slots — a dona é a semana, não o slot
 -- ---------------------------------------------------------------------------
+drop policy if exists "plan_slots: acesso pelo plano do usuário" on public.plan_slots;
 create policy "plan_slots: acesso pelo plano do usuário"
   on public.plan_slots for all to authenticated
   using (
@@ -147,10 +159,12 @@ create policy "plan_slots: acesso pelo plano do usuário"
 -- ---------------------------------------------------------------------------
 -- shopping_list — leitura e marcação de comprado
 -- ---------------------------------------------------------------------------
+drop policy if exists "shopping_list: leitura da própria lista" on public.shopping_list;
 create policy "shopping_list: leitura da própria lista"
   on public.shopping_list for select to authenticated
   using (user_id = (select auth.uid()));
 
+drop policy if exists "shopping_list: marcar itens como comprados" on public.shopping_list;
 create policy "shopping_list: marcar itens como comprados"
   on public.shopping_list for update to authenticated
   using (user_id = (select auth.uid()))
@@ -159,10 +173,12 @@ create policy "shopping_list: marcar itens como comprados"
 -- ---------------------------------------------------------------------------
 -- plan_copies — histórico; o destino precisa ser um plano do próprio usuário
 -- ---------------------------------------------------------------------------
+drop policy if exists "plan_copies: leitura do próprio histórico" on public.plan_copies;
 create policy "plan_copies: leitura do próprio histórico"
   on public.plan_copies for select to authenticated
   using (user_id = (select auth.uid()));
 
+drop policy if exists "plan_copies: registro de cópia em plano próprio" on public.plan_copies;
 create policy "plan_copies: registro de cópia em plano próprio"
   on public.plan_copies for insert to authenticated
   with check (
@@ -173,6 +189,7 @@ create policy "plan_copies: registro de cópia em plano próprio"
     )
   );
 
+drop policy if exists "plan_copies: remoção do próprio histórico" on public.plan_copies;
 create policy "plan_copies: remoção do próprio histórico"
   on public.plan_copies for delete to authenticated
   using (user_id = (select auth.uid()));

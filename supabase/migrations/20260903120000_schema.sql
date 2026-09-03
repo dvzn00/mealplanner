@@ -32,6 +32,7 @@ create table if not exists public.profiles (
   updated_at timestamptz not null default now()
 );
 
+drop trigger if exists profiles_set_updated_at on public.profiles;
 create trigger profiles_set_updated_at
   before update on public.profiles
   for each row execute function public.set_updated_at();
@@ -58,6 +59,7 @@ create index if not exists recipes_user_id_idx on public.recipes (user_id);
 create index if not exists recipes_globais_idx on public.recipes (nome)
   where user_id is null;
 
+drop trigger if exists recipes_set_updated_at on public.recipes;
 create trigger recipes_set_updated_at
   before update on public.recipes
   for each row execute function public.set_updated_at();
@@ -111,6 +113,7 @@ create table if not exists public.weekly_plans (
 create index if not exists weekly_plans_user_id_idx
   on public.weekly_plans (user_id, semana_inicio desc);
 
+drop trigger if exists weekly_plans_set_updated_at on public.weekly_plans;
 create trigger weekly_plans_set_updated_at
   before update on public.weekly_plans
   for each row execute function public.set_updated_at();
@@ -141,6 +144,7 @@ create index if not exists plan_slots_plan_id_idx
 create index if not exists plan_slots_recipe_id_idx
   on public.plan_slots (recipe_id);
 
+drop trigger if exists plan_slots_set_updated_at on public.plan_slots;
 create trigger plan_slots_set_updated_at
   before update on public.plan_slots
   for each row execute function public.set_updated_at();
@@ -164,6 +168,7 @@ create table if not exists public.shopping_list (
 create index if not exists shopping_list_user_id_idx
   on public.shopping_list (user_id);
 
+drop trigger if exists shopping_list_set_updated_at on public.shopping_list;
 create trigger shopping_list_set_updated_at
   before update on public.shopping_list
   for each row execute function public.set_updated_at();
