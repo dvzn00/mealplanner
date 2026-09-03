@@ -38,3 +38,22 @@ export async function listarReceitas(
     propria: user_id === usuarioId,
   }));
 }
+
+export interface ReceitaParaEscolha {
+  id: string;
+  nome: string;
+}
+
+/** Só o necessário para o seletor do diálogo de refeição. */
+export async function listarReceitasParaEscolha(): Promise<
+  ReceitaParaEscolha[]
+> {
+  const supabase = await createClient();
+
+  const { data } = await supabase
+    .from("recipes")
+    .select("id, nome")
+    .order("nome");
+
+  return data ?? [];
+}

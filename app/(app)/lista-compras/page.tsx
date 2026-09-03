@@ -4,7 +4,7 @@ import { CabecalhoDePagina } from "@/components/cabecalho-de-pagina";
 import { EstadoVazio } from "@/components/estado-vazio";
 import { ItemDaLista } from "@/components/lista-compras/item-da-lista";
 import { obterListaDeCompras } from "@/lib/data/lista-compras";
-import { formatarIntervalo } from "@/lib/semana";
+import { formatarPeriodo } from "@/lib/data-iso";
 
 export const metadata: Metadata = { title: "Lista de compras" };
 
@@ -18,7 +18,7 @@ export default async function PaginaDaListaDeCompras() {
         titulo="Lista de compras"
         descricao={
           plano
-            ? `Somada a partir das receitas da semana de ${formatarIntervalo(plano.semana_inicio, plano.semana_fim)}.`
+            ? `Somada a partir das receitas da semana de ${formatarPeriodo(plano.semana_inicio, plano.semana_fim)}.`
             : "A lista aparece assim que houver uma semana planejada."
         }
       />

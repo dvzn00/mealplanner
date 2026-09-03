@@ -1,4 +1,4 @@
-import { segundaDaSemana } from "@/lib/semana";
+import { segundaDaSemanaAtual } from "@/lib/semana";
 import { createClient } from "@/lib/supabase/server";
 
 export interface PlanoDaSemana {
@@ -24,7 +24,7 @@ export async function obterPlanoAtual(
   const { data: daSemana } = await supabase
     .from("weekly_plans")
     .select(COLUNAS)
-    .eq("semana_inicio", segundaDaSemana())
+    .eq("semana_inicio", segundaDaSemanaAtual())
     .maybeSingle();
 
   if (daSemana) return daSemana;

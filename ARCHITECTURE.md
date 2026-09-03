@@ -18,6 +18,13 @@ O trabalho está dividido em blocos. Este arquivo é atualizado ao final de cada
 | 2     | Supabase, schema, RLS, função e trigger, testes  | Concluído  |
 | 3     | Seed de receitas e plano de exemplo              | Concluído  |
 | 4     | Autenticação, layout base e páginas iniciais     | Concluído  |
+| 5     | Grade semanal e navegação entre semanas          | Concluído  |
+| 6     | Arraste de receitas (dnd-kit)                    | Pendente   |
+| 7     | Lista de compras em tempo real                   | Pendente   |
+| 8     | Copiar cardápio e histórico                      | Pendente   |
+| 9     | Geração de PDF                                   | Pendente   |
+| 10    | Importação de sugestões                          | Pendente   |
+| 11    | Polimento, responsividade e testes               | Pendente   |
 
 ## Stack instalada
 
@@ -431,6 +438,95 @@ extenso — unidade, dente, pitada, colher de sopa. Abreviações (g, ml, kg) n�
 mudam, e unidade desconhecida volta intacta: melhor assim do que flexionada
 errado.
 
+### 32. Datas são texto, não `Date`
+
+`lib/data-iso.ts` faz toda a aritmética de datas sobre `YYYY-MM-DD`, com
+inteiros, pelo algoritmo de dias civis. Nenhum `Date` no meio.
+
+O motivo é concreto: `new Date("2026-09-07")` é meia-noite UTC, que em Brasília
+é dia 6 às 21h. Uma semana calculada assim escorrega um dia para metade do
+país. Como um plano semanal não tem hora nem lugar — 7 de setembro é 7 de
+setembro em qualquer canto —, o tipo certo é a data civil, e ela é uma string.
+
+O único ponto que lê o relógio é `hojeIso()`, em UTC, que é o mesmo fuso do
+`current_date` do Postgres no Supabase. `lib/semana.ts` ficou só com a tradução
+entre a data e o vocabulário do produto.
+
+### 33. A semana mora na URL
+
+`/dashboard?semana=YYYY-MM-DD`. Sem estado de cliente para a navegação: o
+botão de voltar do navegador funciona, o link é compartilhável e cada semana é
+uma renderização de servidor limpa. As setas são `<Link>`, não botões com
+`onClick`.
+
+Valor inválido no parâmetro cai na semana corrente, e qualquer data é
+normalizada para a segunda-feira da sua semana — então `?semana=2026-09-10`
+mostra a semana de 7 a 13.
+
+### 34. A semana é criada durante a renderização, e tudo bem
+
+`obterOuCriarPlano` escreve no banco enquanto renderiza, o que normalmente se
+evita. A alternativa seria a pessoa navegar para uma semana futura e encontrar
+uma tela vazia com um botão "criar" — isso não é planejamento, é burocracia.
+
+O que torna aceitável é a idempotência das duas escritas. O plano depende do
+índice único `(user_id, semana_inicio)`; se o insert esbarrar nele, a função
+relê em vez de falhar. Os horários padrão só entram se o plano estiver sem
+nenhum. Rodar duas vezes dá o mesmo resultado que rodar uma.
+
+Nenhum `revalidatePath` mora nessa função — o Next proíbe revalidar durante a
+renderização, e quem revalida são as ações.
+
+### 35. Renumerar posições é um `upsert` só
+
+Toda ação que mexe em horário reordena o dia inteiro, para `posicao` continuar
+refletindo a ordem cronológica. A regra vive em `reordenarPorHorario`, função
+pura com onze testes: ordena por horário, desempata pela posição anterior — o
+que faz a lista não pular quando alguém repete um horário — e renumera de zero
+sem deixar buraco.
+
+A gravação vai em um `upsert` único de propósito. A restrição
+`(plan_id, dia_da_semana, posicao)` é adiável, então trocar duas posições dentro
+de uma transação funciona; em requisições separadas, a primeira esbarraria na
+posição que a segunda ainda vai liberar.
+
+### 36. Sete colunas rolam em vez de espremer
+
+Uma coluna de dia precisa de uns 140px para caber "Café da manhã" e o nome de
+uma receita. Em 768px, sete colunas dariam 95px cada — e a primeira versão
+mostrou exatamente isso: nomes de refeição reduzidos a "C…" e "A…", calorias
+por cima da lixeira.
+
+A grade tem largura mínima de 63rem e rola na horizontal enquanto não couber.
+Abaixo de 768px cada dia ocupa a largura inteira, empilhado. E dentro do
+cartão o horário virou sobretítulo, com o nome da refeição na linha de baixo
+ocupando toda a largura.
+
+O dia de hoje é marcado por um anel, não por fundo cheio: o verde do fundo
+competia com o verde das receitas e apagava a diferença entre horário
+preenchido e vazio.
+
+### 37. Um diálogo para os 21 horários
+
+O estado de interface — qual diálogo está aberto — vive em
+`PlanejadorSemanal`, e há uma instância só de `Dialog`, não uma por cartão.
+Mantém o foco previsível e evita 21 instâncias de Radix na árvore. É também
+onde o `DndContext` vai entrar no Bloco 6.
+
+O componente é de cliente mas não busca nada: os dados chegam prontos do
+servidor por props.
+
+### 38. Três desvios do enunciado do Bloco 5
+
+- **`getOrCreateWeeklyPlan(userId, weekStart)` não recebe `userId`.** O
+  identificador sai da sessão dentro da função. Aceitar o id de quem chama
+  seria confiar no cliente para dizer quem ele é.
+- **O texto do horário vazio é "Sem receita ainda", não "Arraste uma receita
+  aqui".** Arrastar chega no Bloco 6; até lá, a frase convidaria para algo que
+  não acontece.
+- **A alça de arraste (`GripVertical`) também ficou para o Bloco 6**, pelo
+  mesmo motivo — afordância que não funciona é pior que afordância ausente.
+
 ---
 
 ## Estrutura
@@ -442,7 +538,9 @@ app/auth/confirmar/   onde o link do e-mail de confirmação aterrissa
 components/ui/        primitivos do shadcn/ui, com a identidade aplicada
 components/           componentes do produto, por área
 lib/auth/             schemas e Server Actions de sessão
+lib/data-iso.ts       aritmética de datas civis, sem Date e sem fuso
 lib/data/             leituras do servidor que as páginas consomem
+lib/planejamento/     ordenação, schemas e ações da grade semanal
 lib/seed/             receitas padrão e a lógica pura do seed
 lib/supabase/         clientes (browser, servidor, admin), rotas, tipos
 proxy.ts              sessão e proteção de rotas (o antigo middleware.ts)
@@ -490,3 +588,4 @@ O terceiro ignora RLS — use só quando não houver outro caminho.
 | `npm run db:smoke`  | testa o cadastro de ponta a ponta          |
 | `npm run screenshots` | fotografa as telas em quatro larguras    |
 | `npm run ui:smoke`  | percorre os fluxos em um navegador real    |
+| `npm run ui:plano`  | exercita a grade semanal em um navegador   |
