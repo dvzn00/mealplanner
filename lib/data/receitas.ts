@@ -1,5 +1,6 @@
 import type { ReceitaDoSlot } from "@/lib/data/planejamento";
 import { createClient } from "@/lib/supabase/server";
+import { normalizarTexto } from "@/lib/texto";
 
 export interface ReceitaDaLista {
   id: string;
@@ -13,12 +14,42 @@ export interface ReceitaDaLista {
   propria: boolean;
 }
 
+interface ComDono {
+  nome: string;
+  user_id: string | null;
+}
+
 /**
- * As receitas que o usuário enxerga: as dele e as globais.
+ * Esconde a receita do catálogo quando o usuário já tem uma cópia com o mesmo
+ * nome.
  *
- * A RLS já faz esse recorte — a política de leitura de `recipes` aceita
- * `user_id is null or user_id = auth.uid()`. Aqui só decidimos a ordem e
- * marcamos quais são dele.
+ * Sem isso, importar uma sugestão faria a receita aparecer duas vezes no painel
+ * de arraste — a do catálogo e a sua — com o mesmo nome e nenhuma pista de qual
+ * é qual. Importar significa "esta agora é minha".
+ */
+function semDuplicatasDoCatalogo<T extends ComDono>(
+  receitas: T[],
+  usuarioId: string,
+): T[] {
+  const minhas = new Set(
+    receitas
+      .filter((receita) => receita.user_id === usuarioId)
+      .map((receita) => normalizarTexto(receita.nome)),
+  );
+
+  return receitas.filter(
+    (receita) =>
+      receita.user_id !== null || !minhas.has(normalizarTexto(receita.nome)),
+  );
+}
+
+/**
+ * As receitas que o usuário enxerga: as dele e as globais que ele ainda não
+ * importou.
+ *
+ * A RLS já faz o recorte por dono — a política de leitura de `recipes` aceita
+ * `user_id is null or user_id = auth.uid()`. Aqui só decidimos a ordem, a
+ * marca de quais são dele e o descarte das duplicatas.
  */
 export async function listarReceitas(
   usuarioId: string,
@@ -34,24 +65,32 @@ export async function listarReceitas(
 
   if (error || !data) return [];
 
-  return data.map(({ user_id, ...receita }) => ({
-    ...receita,
-    propria: user_id === usuarioId,
-  }));
+  return semDuplicatasDoCatalogo(data, usuarioId).map(
+    ({ user_id, ...receita }) => ({
+      ...receita,
+      propria: user_id === usuarioId,
+    }),
+  );
 }
 
 /**
  * O que o painel de arraste e o seletor do diálogo precisam saber de cada
- * receita. Uma consulta só serve os dois: o seletor usa nome e id, o painel
- * mostra também as calorias.
+ * receita. Uma consulta só serve os dois.
  */
 export async function listarReceitasParaArrastar(): Promise<ReceitaDoSlot[]> {
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
   const { data } = await supabase
     .from("recipes")
-    .select("id, nome, calorias, imagem_url")
+    .select("id, nome, calorias, imagem_url, user_id")
     .order("nome");
 
-  return data ?? [];
+  if (!data) return [];
+
+  const visiveis = user ? semDuplicatasDoCatalogo(data, user.id) : data;
+
+  return visiveis.map(({ user_id, ...receita }) => receita);
 }

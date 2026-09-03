@@ -23,7 +23,7 @@ O trabalho está dividido em blocos. Este arquivo é atualizado ao final de cada
 | 7     | Lista de compras em tempo real                   | Concluído  |
 | 8     | Copiar cardápio e histórico                      | Concluído  |
 | 9     | Geração de PDF                                   | Concluído  |
-| 10    | Importação de sugestões                          | Pendente   |
+| 10    | Importação de sugestões                          | Concluído  |
 | 11    | Polimento, responsividade e testes               | Pendente   |
 
 ## Stack instalada
@@ -709,6 +709,37 @@ sobre branco, porque isto vai para a impressora e para a porta da geladeira.
 O `@react-pdf/renderer` entra em `serverExternalPackages` no
 `next.config.ts`: ele tem o próprio renderizador e dependências de Node, e
 empacotá-lo junto quebra a rota.
+
+### 55. "Já importada" é reconhecida pelo nome
+
+Sem coluna de origem e sem chave estrangeira para o catálogo. A pergunta que a
+tela faz é "você já tem uma receita chamada assim?", e o nome responde isso.
+
+É frágil se a pessoa renomear a cópia — aí o botão de importar volta a
+aparecer. O custo da alternativa seria uma migração e uma coluna a mais para
+responder o que o nome já responde. A comparação ignora acento, caixa e hífen
+(`lib/texto.ts`), então "Grão-de-bico" e "grao de bico" são a mesma receita.
+
+### 56. Importar esconde a receita do catálogo
+
+Depois de importar, a listagem de receitas e o painel de arraste passam a
+mostrar só a sua cópia. Sem isso apareceriam duas entradas com o mesmo nome e
+nenhuma pista de qual é qual — e arrastar a errada não daria erro nenhum,
+só um plano ligado à receita que você não pode editar.
+
+Importar significa "esta agora é minha".
+
+A cópia é independente: editar a sua não mexe no catálogo, e uma mudança no
+catálogo não te alcança. Se a ligação com os ingredientes falhar, a receita
+recém-criada é apagada — receita sem ingrediente não soma nada na lista de
+compras e viraria um fantasma.
+
+### 57. A busca das sugestões é local
+
+O catálogo tem poucas dezenas de receitas e já chega inteiro na página, com os
+ingredientes de cada uma. Filtrar no cliente responde a cada tecla, sem uma ida
+ao servidor por letra digitada. Se o catálogo crescer para milhares, isso vira
+busca no banco — mas aí a página também deixa de carregar tudo de uma vez.
 
 ---
 

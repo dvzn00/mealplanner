@@ -247,6 +247,81 @@ try {
   const naNavbar = await pagina.getByText("Ana Souza").first().isVisible();
   conferir("a navbar passa a mostrar o nome novo", naNavbar, naNavbar);
 
+  // --- sugestões: buscar e importar ---
+  await pagina.goto(`${BASE}/sugestoes`, { waitUntil: "networkidle" });
+
+  const noCatalogo = await pagina.getByRole("article").count();
+  conferir("o catálogo lista as receitas globais", noCatalogo > 0, noCatalogo);
+
+  await pagina.getByLabel("Buscar").fill("brocolis");
+  await pagina.waitForTimeout(300);
+  const filtradas = await pagina.getByRole("article").count();
+  conferir(
+    "a busca acha por ingrediente, mesmo sem acento",
+    filtradas > 0 && filtradas < noCatalogo,
+    `${filtradas} de ${noCatalogo}`,
+  );
+
+  await pagina.getByLabel("Buscar").fill("");
+  await pagina.waitForTimeout(300);
+
+  const antesDeImportar = await pagina.getByRole("article").count();
+  const nomeImportado = await pagina
+    .getByRole("article")
+    .first()
+    .getByRole("heading")
+    .textContent();
+
+  await pagina.getByRole("button", { name: "Importar" }).first().click();
+  await pagina.waitForTimeout(2000);
+
+  const { count: minhas } = await supabase
+    .from("recipes")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", userId);
+
+  conferir(
+    `importar "${nomeImportado?.trim()}" cria a cópia do usuário`,
+    minhas === 1,
+    `${minhas} receita(s) próprias`,
+  );
+
+  const { count: ligacoes } = await supabase
+    .from("recipe_ingredients")
+    .select("id", { count: "exact", head: true })
+    .in(
+      "recipe_id",
+      (
+        await supabase.from("recipes").select("id").eq("user_id", userId)
+      ).data?.map((r) => r.id) ?? [],
+    );
+  conferir(
+    "com os ingredientes junto",
+    (ligacoes ?? 0) > 0,
+    `${ligacoes} ligação(ões)`,
+  );
+
+  const jaImportada = await pagina
+    .getByText("Já está nas suas receitas")
+    .first()
+    .isVisible()
+    .catch(() => false);
+  conferir("o cartão passa a dizer que já foi importada", jaImportada, jaImportada);
+
+  await pagina.goto(`${BASE}/receitas`, { waitUntil: "networkidle" });
+  const emMinhasReceitas = await pagina.getByRole("article").count();
+  const temEtiqueta = await pagina
+    .getByText("Sua receita")
+    .first()
+    .isVisible()
+    .catch(() => false);
+
+  conferir(
+    "a importada aparece como sua, sem duplicar o catálogo",
+    emMinhasReceitas === antesDeImportar && temEtiqueta,
+    `${emMinhasReceitas} receitas, etiqueta ${temEtiqueta}`,
+  );
+
   // --- navegação por teclado ---
   await pagina.goto(`${BASE}/dashboard`, { waitUntil: "networkidle" });
   await pagina.keyboard.press("Tab");
