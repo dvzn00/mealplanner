@@ -1,0 +1,189 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+/*
+  Meal Planner — camada de design.
+  Fonte única de verdade das cores. Nenhum HEX deve ser escrito
+  diretamente em componentes: use sempre um token daqui.
+*/
+
+@theme inline {
+  /* --- superfícies e texto (mapeamento shadcn/ui) --- */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  /* --- paleta da marca --- */
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary-strong: var(--primary-strong);
+  --color-primary-soft: var(--primary-soft);
+
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary-strong: var(--secondary-strong);
+  --color-secondary-soft: var(--secondary-soft);
+
+  --color-tertiary: var(--tertiary);
+  --color-tertiary-foreground: var(--tertiary-foreground);
+  --color-tertiary-strong: var(--tertiary-strong);
+  --color-tertiary-soft: var(--tertiary-soft);
+
+  /* --- apelidos da tabela de paleta do briefing --- */
+  --color-gray-light: var(--gray-light);
+  --color-gray-light-2: var(--gray-light-2);
+  --color-text-dark: var(--text-dark);
+  --color-text-gray: var(--text-gray);
+  --color-text-muted: var(--text-muted);
+  --color-green-light: var(--primary-soft);
+  --color-pink-light: var(--secondary-soft);
+
+  /* --- barra lateral (shadcn) --- */
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  /* --- gráficos --- */
+  --color-chart-1: var(--primary);
+  --color-chart-2: var(--secondary);
+  --color-chart-3: var(--tertiary);
+  --color-chart-4: var(--primary-strong);
+  --color-chart-5: var(--tertiary-strong);
+
+  /* --- tipografia --- */
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
+  --font-heading: var(--font-sans);
+
+  /* --- raios: cantos generosos, botões em pílula --- */
+  --radius-sm: calc(var(--radius) * 0.5);
+  --radius-md: calc(var(--radius) * 0.75);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.25);
+  --radius-2xl: calc(var(--radius) * 1.5);
+  --radius-3xl: calc(var(--radius) * 2);
+  --radius-4xl: calc(var(--radius) * 2.75);
+  --radius-pill: 9999px;
+
+  /* --- sombras: cards flutuando, difusas e esverdeadas --- */
+  --shadow-soft: 0 1px 2px -1px rgb(51 51 51 / 0.06),
+    0 6px 20px -8px rgb(51 51 51 / 0.10);
+  --shadow-card: 0 2px 4px -2px rgb(30 74 35 / 0.08),
+    0 12px 32px -12px rgb(30 74 35 / 0.16);
+  --shadow-float: 0 18px 48px -16px rgb(30 74 35 / 0.32);
+}
+
+:root {
+  /* Paleta literal do briefing */
+  --primary: #5dbb63; /* verde sálvia — superfícies, ícones ativos, destaques */
+  --primary-foreground: #ffffff;
+  --primary-strong: #2f8437; /* variante acessível: texto branco atinge 4.67:1 */
+  --primary-soft: #e8f5e9; /* verde claro — fundo de ícones de vegetais */
+
+  --secondary: #f76c6c; /* coral */
+  --secondary-foreground: #ffffff;
+  --secondary-strong: #c44e4e; /* variante acessível: 4.62:1 com branco */
+  --secondary-soft: #ffe4e1; /* rosa bebê — fundo de ícones de frutas */
+
+  --tertiary: #b39ddb; /* lilás suave */
+  --tertiary-foreground: #ffffff;
+  --tertiary-strong: #7a5fbf; /* variante acessível: 4.98:1 com branco */
+  --tertiary-soft: #f2edfb;
+
+  --gray-light: #f8f9fa;
+  --gray-light-2: #f5f5f5;
+  --text-dark: #333333;
+  --text-gray: #888888; /* apenas texto grande/decorativo: 3.54:1 no branco */
+  --text-muted: #6e6e6e; /* texto auxiliar em corpo de texto: 5.10:1 */
+
+  /* Semântica de superfície */
+  --background: #f8f9fa;
+  --foreground: #333333;
+  --card: #ffffff;
+  --card-foreground: #333333;
+  --popover: #ffffff;
+  --popover-foreground: #333333;
+  --muted: #f5f5f5;
+  --muted-foreground: #6e6e6e;
+  --accent: #e8f5e9;
+  --accent-foreground: #2f8437;
+  --destructive: #d14343;
+  --border: #e7eae8;
+  --input: #dfe4e0;
+  --ring: #5dbb63;
+
+  --sidebar: #ffffff;
+  --sidebar-foreground: #333333;
+  --sidebar-primary: #2f8437;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #e8f5e9;
+  --sidebar-accent-foreground: #2f8437;
+  --sidebar-border: #e7eae8;
+  --sidebar-ring: #5dbb63;
+
+  --radius: 1rem;
+  --font-mono: ui-monospace, "SFMono-Regular", "Menlo", "Consolas", monospace;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  html {
+    @apply font-sans;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    text-wrap: pretty;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    @apply font-heading font-semibold tracking-tight text-text-dark;
+    text-wrap: balance;
+  }
+
+  /* Foco sempre visível para navegação por teclado. */
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-primary-strong;
+  }
+
+  ::selection {
+    background-color: var(--primary-soft);
+    color: var(--primary-strong);
+  }
+}
+
+/* Respeita quem prefere menos movimento. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
