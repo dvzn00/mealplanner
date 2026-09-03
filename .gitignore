@@ -45,3 +45,6 @@ next-env.d.ts
 
 # SQL concatenado gerado por npm run db:sql
 supabase/schema.sql
+
+# capturas de tela para revisão visual
+.screenshots/

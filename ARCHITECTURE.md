@@ -17,7 +17,7 @@ O trabalho está dividido em blocos. Este arquivo é atualizado ao final de cada
 | 1     | Setup do projeto, design tokens, tooling         | Concluído  |
 | 2     | Supabase, schema, RLS, função e trigger, testes  | Concluído  |
 | 3     | Seed de receitas e plano de exemplo              | Concluído  |
-| 4     | Autenticação, layout base e páginas iniciais     | Pendente   |
+| 4     | Autenticação, layout base e páginas iniciais     | Concluído  |
 
 ## Stack instalada
 
@@ -33,6 +33,7 @@ O trabalho está dividido em blocos. Este arquivo é atualizado ao final de cada
 | Zod           | 3.25     | Ver decisão 7                                      |
 | Vitest        | 4.1      | jsdom + Testing Library                            |
 | PGlite        | 0.5.8    | Postgres em WASM; só nos testes                    |
+| Playwright    | 1.x      | capturas e teste de fluxo; só em desenvolvimento   |
 
 ---
 
@@ -104,15 +105,24 @@ especificada. Só que três das cores **não passam no WCAG AA com texto branco*
 Cada cor da marca ganhou então três degraus, e a regra de uso é a mesma para as
 três famílias:
 
-| Token             | Verde     | Coral     | Lilás     | Onde usar                                   |
-| ----------------- | --------- | --------- | --------- | ------------------------------------------- |
-| `*-soft`          | `#E8F5E9` | `#FFE4E1` | `#F2EDFB` | fundo de ícone, chip, faixa                 |
-| base              | `#5DBB63` | `#F76C6C` | `#B39DDB` | superfície grande, ícone ativo, borda       |
-| `*-strong`        | `#2F8437` | `#C44E4E` | `#7A5FBF` | qualquer coisa com texto branco por cima    |
+| Token      | Verde     | Coral     | Lilás     | Onde usar                                 |
+| ---------- | --------- | --------- | --------- | ----------------------------------------- |
+| `*-soft`   | `#E8F5E9` | `#FFE4E1` | `#F2EDFB` | fundo de ícone, chip, faixa               |
+| base       | `#5DBB63` | `#F76C6C` | `#B39DDB` | superfície grande, ícone ativo, borda     |
+| `*-strong` | `#2F8437` | `#C44E4E` | `#7A5FBF` | **preenchimento** com texto branco por cima |
+| `*-deep`   | `#276B2D` | `#A83C3C` | `#6A4CAE` | **texto** sobre branco ou sobre `-soft`    |
 
-As variantes `-strong` passam com folga: 4.67:1, 4.62:1 e 4.98:1. Mesma lógica
-para texto auxiliar — `--text-gray` (`#888888`) fica para uso decorativo e
-`--text-muted` (`#6E6E6E`, 5.10:1) é o que aparece em texto corrido.
+A regra em uma linha: **preenchimento usa `-strong`, texto usa `-deep`.**
+
+O quarto degrau nasceu no Bloco 4, olhando as telas prontas. `-strong` sobre
+branco passa (4.67:1), mas `-strong` sobre `-soft` cai para 4.15:1 — e era
+exatamente essa a combinação do item ativo do menu, do aviso de erro e das
+iniciais no avatar. `-deep` passa nos dois fundos: 6.51:1 no branco e 5.79:1
+no `-soft`.
+
+Mesma lógica para texto auxiliar — `--text-gray` (`#888888`) fica para uso
+decorativo e `--text-muted` (`#6E6E6E`, 5.10:1) é o que aparece em texto
+corrido.
 
 **Decidido pelo usuário:** abordagem híbrida. Texto branco sobre cor sempre usa
 a variante `-strong`; a cor base do briefing continua nos fundos de card, nos
@@ -343,18 +353,100 @@ aconteça o que acontecer, e o `on delete cascade` leva o resto junto.
 sobe um Postgres em WASM. Três heaps desses ao mesmo tempo derrubam o V8 com
 erro fatal. `fileParallelism: false` resolve, ao custo de alguns segundos.
 
+### 26. O contraste está travado em teste
+
+`lib/contraste.test.ts` lê os tokens direto de `app/globals.css` — não copia os
+valores — e afirma 4.5:1 para cada par de texto que a interface usa de verdade,
+3:1 para bordas e contornos de foco. Trocar um token e piorar o contraste
+quebra `npm run test`.
+
+Um dos casos de teste afirma o contrário: que as três cores base do briefing
+**reprovam** com texto branco. É a explicação do porquê de `-strong` e `-deep`
+existirem, escrita onde ninguém apaga sem perceber.
+
+### 27. Server Action fora de transição não atualiza a interface
+
+Achado olhando o teste de fluxo falhar: salvar o perfil gravava o nome no banco,
+mas a navbar continuava com o nome antigo.
+
+A causa é sutil. Quando uma Server Action é chamada de dentro de
+`startTransition`, o router aplica os dados que o `revalidatePath` produziu.
+Chamada solta — como `handleSubmit` do react-hook-form faz por padrão — a
+resposta revalidada é descartada em silêncio, sem erro nenhum. A gravação
+funciona, a tela não acompanha.
+
+Por isso o formulário de perfil envolve a chamada em `useTransition`, e o item
+da lista de compras usa `useTransition` junto com `useOptimistic`. Vale para
+toda action que revalida algo visível fora do próprio componente.
+
+### 28. Grupos de rota separam as duas cascas
+
+`app/(auth)/` tem o cartão branco sobre o verde; `app/(app)/` tem a barra
+lateral, a navbar e o fundo cinza. Grupos não entram na URL, então `/login` e
+`/dashboard` continuam na raiz.
+
+`/` não tem tela própria: redireciona para o dashboard ou para o login. Uma
+página de apresentação pode ocupar esse lugar quando houver o que mostrar para
+quem ainda não entrou.
+
+O layout de `(app)` refaz a checagem de sessão que o proxy já fez. Não é
+desconfiança do proxy — é de lá que sai o usuário que a navbar mostra, e uma
+tranca a mais no caminho de dados não custa nada.
+
+### 29. Validação nos dois lados, com o mesmo schema
+
+`lib/auth/schemas.ts` é importado pelo `zodResolver` no cliente e pela Server
+Action no servidor. O cliente valida enquanto a pessoa digita; o servidor
+valida de novo antes de falar com o Supabase. Mensagem de erro em português,
+escrita para quem preenche o formulário, não para quem lê o log.
+
+`destinoSeguro()` guarda o `?proximo=` do proxy: só aceita caminho interno
+começando com uma barra. Sem isso, `?proximo=https://outro.site` transformaria
+a tela de login em redirecionamento aberto.
+
+Erros do Supabase chegam em inglês e falando de "credentials"; `traduzirErro`
+converte os que a pessoa pode encontrar e devolve uma frase honesta para o
+resto. Senha nunca aparece em retorno nem em log.
+
+### 30. Duas ferramentas visuais
+
+| Script                  | Para quê                                                   |
+| ----------------------- | ---------------------------------------------------------- |
+| `npm run screenshots`   | fotografa as telas em 375, 768, 1024 e 1440 px             |
+| `npm run ui:smoke`      | percorre login, lista, perfil e logout em um navegador real |
+
+As duas criam um usuário descartável pela API de administração, entram pela
+tela de login como qualquer pessoa entraria e apagam o usuário no final. As
+imagens vão para `.screenshots/`, que não é versionado.
+
+Foi olhando essas capturas que apareceram quatro coisas que a leitura do código
+não pegaria: "1 unidades" na lista, o ponto dobrado em "6 de set..", o cartão
+de refeições linkando para a própria página, e o contraste do item ativo do
+menu.
+
+### 31. Medidas flexionam com a quantidade
+
+`lib/unidades.ts` guarda os pares singular/plural das unidades escritas por
+extenso — unidade, dente, pitada, colher de sopa. Abreviações (g, ml, kg) não
+mudam, e unidade desconhecida volta intacta: melhor assim do que flexionada
+errado.
+
 ---
 
 ## Estrutura
 
 ```
-app/                  rotas (App Router); tudo é Server Component por padrão
-components/ui/        primitivos do shadcn/ui
-lib/                  env, utilitários
+app/(auth)/           login e cadastro — cartão branco sobre o verde
+app/(app)/            telas autenticadas — barra lateral, navbar, fundo cinza
+app/auth/confirmar/   onde o link do e-mail de confirmação aterrissa
+components/ui/        primitivos do shadcn/ui, com a identidade aplicada
+components/           componentes do produto, por área
+lib/auth/             schemas e Server Actions de sessão
+lib/data/             leituras do servidor que as páginas consomem
 lib/seed/             receitas padrão e a lógica pura do seed
 lib/supabase/         clientes (browser, servidor, admin), rotas, tipos
 proxy.ts              sessão e proteção de rotas (o antigo middleware.ts)
-scripts/              seed e diagnóstico do banco
+scripts/              seed, diagnóstico do banco e ferramentas visuais
 supabase/migrations/  o schema, em ordem de aplicação
 supabase/tests/       migrações exercitadas em Postgres real (PGlite)
 public/               estáticos
@@ -396,3 +488,5 @@ O terceiro ignora RLS — use só quando não houver outro caminho.
 | `npm run db:check`  | confere o schema aplicado no projeto       |
 | `npm run db:seed`   | popula o catálogo global de receitas       |
 | `npm run db:smoke`  | testa o cadastro de ponta a ponta          |
+| `npm run screenshots` | fotografa as telas em quatro larguras    |
+| `npm run ui:smoke`  | percorre os fluxos em um navegador real    |

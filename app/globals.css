@@ -29,16 +29,19 @@
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
   --color-primary-strong: var(--primary-strong);
+  --color-primary-deep: var(--primary-deep);
   --color-primary-soft: var(--primary-soft);
 
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
   --color-secondary-strong: var(--secondary-strong);
+  --color-secondary-deep: var(--secondary-deep);
   --color-secondary-soft: var(--secondary-soft);
 
   --color-tertiary: var(--tertiary);
   --color-tertiary-foreground: var(--tertiary-foreground);
   --color-tertiary-strong: var(--tertiary-strong);
+  --color-tertiary-deep: var(--tertiary-deep);
   --color-tertiary-soft: var(--tertiary-soft);
 
   /* --- apelidos da tabela de paleta do briefing --- */
@@ -94,17 +97,20 @@
   /* Paleta literal do briefing */
   --primary: #5dbb63; /* verde sálvia — superfícies, ícones ativos, destaques */
   --primary-foreground: #ffffff;
-  --primary-strong: #2f8437; /* variante acessível: texto branco atinge 4.67:1 */
+  --primary-strong: #2f8437; /* preenchimento com texto branco: 4.67:1 */
+  --primary-deep: #276b2d;   /* texto sobre branco (6.51:1) ou sobre -soft (5.79:1) */
   --primary-soft: #e8f5e9; /* verde claro — fundo de ícones de vegetais */
 
   --secondary: #f76c6c; /* coral */
   --secondary-foreground: #ffffff;
-  --secondary-strong: #c44e4e; /* variante acessível: 4.62:1 com branco */
+  --secondary-strong: #c44e4e; /* preenchimento com texto branco: 4.62:1 */
+  --secondary-deep: #a83c3c;   /* texto sobre branco (6.22:1) ou sobre -soft (5.17:1) */
   --secondary-soft: #ffe4e1; /* rosa bebê — fundo de ícones de frutas */
 
   --tertiary: #b39ddb; /* lilás suave */
   --tertiary-foreground: #ffffff;
-  --tertiary-strong: #7a5fbf; /* variante acessível: 4.98:1 com branco */
+  --tertiary-strong: #7a5fbf; /* preenchimento com texto branco: 4.98:1 */
+  --tertiary-deep: #6a4cae;   /* texto sobre branco (6.45:1) ou sobre -soft (5.61:1) */
   --tertiary-soft: #f2edfb;
 
   --gray-light: #f8f9fa;
@@ -123,7 +129,7 @@
   --muted: #f5f5f5;
   --muted-foreground: #6e6e6e;
   --accent: #e8f5e9;
-  --accent-foreground: #2f8437;
+  --accent-foreground: #276b2d;
   --destructive: #d14343;
   --border: #e7eae8;
   --input: #dfe4e0;

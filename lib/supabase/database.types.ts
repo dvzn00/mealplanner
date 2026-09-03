@@ -150,7 +150,22 @@ export type Database = {
         Row: RecipeIngredient;
         Insert: ComDefault<RecipeIngredient, "id">;
         Update: Partial<RecipeIngredient>;
-        Relationships: [];
+        Relationships: [
+        {
+          foreignKeyName: "recipe_ingredients_recipe_id_fkey";
+          columns: ["recipe_id"];
+          isOneToOne: false;
+          referencedRelation: "recipes";
+          referencedColumns: ["id"];
+        },
+        {
+          foreignKeyName: "recipe_ingredients_ingredient_id_fkey";
+          columns: ["ingredient_id"];
+          isOneToOne: false;
+          referencedRelation: "ingredients";
+          referencedColumns: ["id"];
+        },
+        ];
       };
       weekly_plans: {
         Row: WeeklyPlan;
@@ -162,14 +177,44 @@ export type Database = {
         Row: PlanSlot;
         Insert: ComDefault<PlanSlot, Carimbos | "recipe_id">;
         Update: Partial<PlanSlot>;
-        Relationships: [];
+        Relationships: [
+        {
+          foreignKeyName: "plan_slots_plan_id_fkey";
+          columns: ["plan_id"];
+          isOneToOne: false;
+          referencedRelation: "weekly_plans";
+          referencedColumns: ["id"];
+        },
+        {
+          foreignKeyName: "plan_slots_recipe_id_fkey";
+          columns: ["recipe_id"];
+          isOneToOne: false;
+          referencedRelation: "recipes";
+          referencedColumns: ["id"];
+        },
+        ];
       };
       shopping_list: {
         Row: ShoppingListItem;
         Insert: ComDefault<ShoppingListItem, Carimbos | "comprado">;
         // Pela RLS, o cliente só consegue mexer em `comprado`.
         Update: { comprado?: boolean };
-        Relationships: [];
+        Relationships: [
+        {
+          foreignKeyName: "shopping_list_plan_id_fkey";
+          columns: ["plan_id"];
+          isOneToOne: false;
+          referencedRelation: "weekly_plans";
+          referencedColumns: ["id"];
+        },
+        {
+          foreignKeyName: "shopping_list_ingredient_id_fkey";
+          columns: ["ingredient_id"];
+          isOneToOne: false;
+          referencedRelation: "ingredients";
+          referencedColumns: ["id"];
+        },
+        ];
       };
       plan_copies: {
         Row: PlanCopy;

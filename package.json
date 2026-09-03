@@ -13,7 +13,9 @@
     "db:sql": "node scripts/db-sql.mjs",
     "db:check": "node --env-file-if-exists=.env.local scripts/db-check.mjs",
     "db:seed": "tsx --env-file-if-exists=.env.local scripts/seed.ts",
-    "db:smoke": "node --env-file-if-exists=.env.local scripts/db-smoke.mjs"
+    "db:smoke": "node --env-file-if-exists=.env.local scripts/db-smoke.mjs",
+    "screenshots": "node --env-file-if-exists=.env.local scripts/screenshots.mjs",
+    "ui:smoke": "node --env-file-if-exists=.env.local scripts/ui-smoke.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
@@ -51,6 +53,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.3.4",
     "jsdom": "^30.0.1",
+    "playwright": "^1.62.1",
     "tailwindcss": "^4",
     "tsx": "^4.23.13",
     "typescript": "^5",
