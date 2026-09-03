@@ -55,6 +55,29 @@ function somarDias(iso, n) {
     .slice(0, 10);
 }
 
+/** Arraste de verdade: o dnd-kit só reage a pointer com deslocamento. */
+async function arrastar(pagina, origem, destino) {
+  const a = await origem.boundingBox();
+  const b = await destino.boundingBox();
+  if (!a || !b) throw new Error("elemento sem caixa para arrastar");
+
+  await pagina.mouse.move(a.x + a.width / 2, a.y + a.height / 2);
+  await pagina.mouse.down();
+  await pagina.mouse.move(a.x + a.width / 2 + 14, a.y + a.height / 2 + 14, {
+    steps: 6,
+  });
+  await pagina.mouse.move(b.x + b.width / 2, b.y + b.height / 2, { steps: 14 });
+  await pagina.mouse.move(b.x + b.width / 2, b.y + b.height / 2 + 3, {
+    steps: 4,
+  });
+  await pagina.mouse.up();
+  await pagina.waitForTimeout(1600);
+}
+
+function horarioDoDia(pagina, dia, indice) {
+  return pagina.getByRole("region", { name: dia }).locator("article").nth(indice);
+}
+
 async function slotsDoDia(userId, semanaInicio, dia) {
   const { data: plano } = await supabase
     .from("weekly_plans")
@@ -103,7 +126,11 @@ try {
   await pagina.waitForURL("**/dashboard", { timeout: 20000 });
 
   // --- a semana corrente carrega inteira ---
-  const colunas = await pagina.getByRole("region").count();
+  // Seletor pelas colunas de dia, e não por `role=region`: o painel de
+  // receitas também é uma marca de região e entraria na conta.
+  const colunas = await pagina
+    .locator('section[aria-labelledby^="dia-"]')
+    .count();
   conferir("sete colunas, uma por dia", colunas === 7, colunas);
 
   const horarios = await pagina.getByText("08:00").count();
@@ -216,6 +243,86 @@ try {
     semLanche.length === 3 &&
       semLanche.map((s) => s.posicao).join(",") === "0,1,2",
     `${semLanche.length} horário(s), posições ${semLanche.map((s) => s.posicao).join(",")}`,
+  );
+  // --- Bloco 6: arraste ---
+  console.log("");
+
+  const doPainel = pagina
+    .getByRole("button", { name: /para um horário$/ })
+    .first();
+  const nomeDoPainel = (await doPainel.getAttribute("aria-label"))
+    ?.replace("Arrastar ", "")
+    .replace(" para um horário", "");
+
+  await arrastar(pagina, doPainel, horarioDoDia(pagina, "Quarta", 0));
+
+  let quarta = await slotsDoDia(userId, segundaAtual(), "quarta");
+  conferir(
+    `arrastar "${nomeDoPainel}" do painel preenche o horário vazio`,
+    quarta[0]?.recipe_id !== null,
+    quarta[0]?.recipe_id ?? "vazio",
+  );
+
+  // --- arrastar entre dias diferentes ---
+  const receitaDaQuarta = quarta[0]?.recipe_id;
+  await arrastar(
+    pagina,
+    pagina.getByRole("button", { name: /^Arrastar .* de Café da manhã de Quarta$/ }),
+    horarioDoDia(pagina, "Quinta", 1),
+  );
+
+  quarta = await slotsDoDia(userId, segundaAtual(), "quarta");
+  const quinta = await slotsDoDia(userId, segundaAtual(), "quinta");
+  conferir(
+    "arrastar entre dias esvazia a origem",
+    quarta[0]?.recipe_id === null,
+    quarta[0]?.recipe_id,
+  );
+  conferir(
+    "e preenche o destino com a receita que veio",
+    quinta[1]?.recipe_id === receitaDaQuarta,
+    quinta[1]?.recipe_id,
+  );
+
+  // --- soltar sobre horário ocupado troca as duas ---
+  // Segunda perdeu o café da manhã para o teste da lixeira; a troca usa dois
+  // horários que continuam preenchidos.
+  const tercaAntes = await slotsDoDia(userId, segundaAtual(), "terca");
+  const segundaAntes = await slotsDoDia(userId, segundaAtual(), "segunda");
+
+  await arrastar(
+    pagina,
+    pagina.getByRole("button", {
+      name: /^Arrastar .* de Café da manhã de Terça$/,
+    }),
+    horarioDoDia(pagina, "Segunda", 1),
+  );
+
+  const tercaDepois = await slotsDoDia(userId, segundaAtual(), "terca");
+  const segundaDepois = await slotsDoDia(userId, segundaAtual(), "segunda");
+  conferir(
+    "soltar sobre horário ocupado troca as duas receitas",
+    segundaDepois[1]?.recipe_id === tercaAntes[0]?.recipe_id &&
+      tercaDepois[0]?.recipe_id === segundaAntes[1]?.recipe_id,
+    `segunda almoço ${segundaDepois[1]?.recipe_id} / terça café ${tercaDepois[0]?.recipe_id}`,
+  );
+
+  // --- a lista de compras acompanha ---
+  const { data: plano } = await supabase
+    .from("weekly_plans")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("semana_inicio", segundaAtual())
+    .maybeSingle();
+  const { count: itens } = await supabase
+    .from("shopping_list")
+    .select("id", { count: "exact", head: true })
+    .eq("plan_id", plano?.id ?? "");
+
+  conferir(
+    "a lista de compras continua sendo refeita a cada mudança",
+    (itens ?? 0) > 0,
+    `${itens} item(ns)`,
   );
 } finally {
   if (navegador) await navegador.close();

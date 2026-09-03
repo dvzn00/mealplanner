@@ -9,8 +9,10 @@ import {
   reordenarPorHorario,
 } from "./ordenacao";
 import {
+  atribuirReceitaSchema,
   criarSlotSchema,
   editarSlotSchema,
+  moverReceitaSchema,
   slotSchema,
   type CriarSlotInput,
   type EditarSlotInput,
@@ -123,6 +125,33 @@ export async function removerSlot(slotId: string): Promise<ResultadoDaAcao> {
   return ok;
 }
 
+/**
+ * Põe (ou tira) uma receita de um horário. É o que acontece ao soltar uma
+ * receita do painel sobre a grade — se o horário já tinha outra, ela é
+ * substituída.
+ */
+export async function atribuirReceitaAoSlot(
+  slotId: string,
+  receitaId: string | null,
+): Promise<ResultadoDaAcao> {
+  const validado = atribuirReceitaSchema.safeParse({ slotId, receitaId });
+  if (!validado.success) return falha("Receita ou refeição inválida.");
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("plan_slots")
+    .update({ recipe_id: validado.data.receitaId })
+    .eq("id", validado.data.slotId);
+
+  if (error) {
+    return falha("Não consegui mover essa receita. Tente de novo.");
+  }
+
+  revalidarPlanejamento();
+
+  return ok;
+}
+
 /** Tira a receita do horário, mantendo o horário no lugar. */
 export async function limparReceitaDoSlot(
   slotId: string,
@@ -130,14 +159,50 @@ export async function limparReceitaDoSlot(
   const validado = slotSchema.safeParse({ slotId });
   if (!validado.success) return falha("Refeição inválida.");
 
+  return atribuirReceitaAoSlot(validado.data.slotId, null);
+}
+
+/**
+ * Troca as receitas de dois horários — o mesmo dia ou dias diferentes.
+ *
+ * É troca, e não mudança de lugar: soltar sobre um horário ocupado devolve a
+ * receita que estava lá para o horário de origem. Quando o destino está vazio,
+ * o efeito é idêntico ao de mover, que é o caso comum; quando não está, nada
+ * do que a pessoa já tinha planejado desaparece em silêncio.
+ *
+ * As duas linhas vão em um `upsert` só, para a troca acontecer dentro de uma
+ * transação.
+ */
+export async function moverReceitaEntreSlots(
+  origemId: string,
+  destinoId: string,
+): Promise<ResultadoDaAcao> {
+  const validado = moverReceitaSchema.safeParse({ origemId, destinoId });
+  if (!validado.success) return falha("Refeição inválida.");
+  if (validado.data.origemId === validado.data.destinoId) return ok;
+
   const supabase = await createClient();
-  const { error } = await supabase
+  const { data: slots } = await supabase
     .from("plan_slots")
-    .update({ recipe_id: null })
-    .eq("id", validado.data.slotId);
+    .select(
+      "id, plan_id, dia_da_semana, nome_refeicao, horario, recipe_id, posicao",
+    )
+    .in("id", [validado.data.origemId, validado.data.destinoId]);
+
+  const origem = slots?.find((slot) => slot.id === validado.data.origemId);
+  const destino = slots?.find((slot) => slot.id === validado.data.destinoId);
+
+  if (!origem || !destino) {
+    return falha("Não encontrei uma das refeições. Recarregue a página.");
+  }
+
+  const { error } = await supabase.from("plan_slots").upsert([
+    { ...origem, recipe_id: destino.recipe_id },
+    { ...destino, recipe_id: origem.recipe_id },
+  ]);
 
   if (error) {
-    return falha("Não consegui tirar a receita daqui. Tente de novo.");
+    return falha("Não consegui mover essa receita. Tente de novo.");
   }
 
   revalidarPlanejamento();

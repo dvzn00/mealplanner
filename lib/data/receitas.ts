@@ -1,3 +1,4 @@
+import type { ReceitaDoSlot } from "@/lib/data/planejamento";
 import { createClient } from "@/lib/supabase/server";
 
 export interface ReceitaDaLista {
@@ -39,20 +40,17 @@ export async function listarReceitas(
   }));
 }
 
-export interface ReceitaParaEscolha {
-  id: string;
-  nome: string;
-}
-
-/** Só o necessário para o seletor do diálogo de refeição. */
-export async function listarReceitasParaEscolha(): Promise<
-  ReceitaParaEscolha[]
-> {
+/**
+ * O que o painel de arraste e o seletor do diálogo precisam saber de cada
+ * receita. Uma consulta só serve os dois: o seletor usa nome e id, o painel
+ * mostra também as calorias.
+ */
+export async function listarReceitasParaArrastar(): Promise<ReceitaDoSlot[]> {
   const supabase = await createClient();
 
   const { data } = await supabase
     .from("recipes")
-    .select("id, nome")
+    .select("id, nome, calorias, imagem_url")
     .order("nome");
 
   return data ?? [];

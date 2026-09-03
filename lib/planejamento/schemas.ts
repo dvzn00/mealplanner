@@ -35,6 +35,16 @@ export const editarSlotSchema = z.object({
 
 export const slotSchema = z.object({ slotId: uuid });
 
+export const atribuirReceitaSchema = z.object({
+  slotId: uuid,
+  receitaId: uuid.nullable(),
+});
+
+export const moverReceitaSchema = z.object({
+  origemId: uuid,
+  destinoId: uuid,
+});
+
 export type CriarSlotInput = z.input<typeof criarSlotSchema>;
 export type EditarSlotInput = z.infer<typeof editarSlotSchema>;
 

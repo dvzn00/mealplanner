@@ -4,7 +4,7 @@ import { NavegacaoDeSemanas } from "@/components/planejamento/navegacao-de-seman
 import { PlanejadorSemanal } from "@/components/planejamento/planejador-semanal";
 import { ehDataIso, segundaDaSemana } from "@/lib/data-iso";
 import { obterOuCriarPlano } from "@/lib/data/planejamento";
-import { listarReceitasParaEscolha } from "@/lib/data/receitas";
+import { listarReceitasParaArrastar } from "@/lib/data/receitas";
 import { diaDeHoje, segundaDaSemanaAtual } from "@/lib/semana";
 import { ROTA_LOGIN } from "@/lib/supabase/routes";
 
@@ -27,7 +27,7 @@ export default async function PaginaDoPlanejamento({
 
   const [plano, receitas] = await Promise.all([
     obterOuCriarPlano(semanaInicio),
-    listarReceitasParaEscolha(),
+    listarReceitasParaArrastar(),
   ]);
 
   if (!plano) redirect(ROTA_LOGIN);
@@ -56,6 +56,7 @@ export default async function PaginaDoPlanejamento({
       <PlanejadorSemanal
         plano={plano}
         receitas={receitas}
+        receitasParaEscolha={receitas.map(({ id, nome }) => ({ id, nome }))}
         diaDeHoje={ehSemanaAtual ? diaDeHoje() : null}
       />
     </div>

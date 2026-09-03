@@ -5,6 +5,7 @@ import {
   MenuDoUsuario,
 } from "@/components/app-shell/menu-do-usuario";
 import { Navegacao } from "@/components/app-shell/navegacao";
+import { Toaster } from "@/components/ui/sonner";
 import { Marca } from "@/components/marca";
 import { obterUsuarioDaSessao } from "@/lib/data/sessao";
 import { ROTA_LOGIN } from "@/lib/supabase/routes";
@@ -53,6 +54,8 @@ export default async function LayoutDoApp({
           {children}
         </main>
       </div>
+
+      <Toaster />
     </div>
   );
 }

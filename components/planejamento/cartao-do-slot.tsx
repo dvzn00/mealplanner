@@ -1,17 +1,21 @@
 "use client";
 
-import { Trash2 } from "lucide-react";
+import { useDraggable, useDroppable } from "@dnd-kit/core";
+import { GripVertical, Trash2 } from "lucide-react";
 import Image from "next/image";
 import { useTransition } from "react";
 import type { SlotDoPlano } from "@/lib/data/planejamento";
 import { limparReceitaDoSlot } from "@/lib/planejamento/actions";
+import { idDoSlot } from "@/lib/planejamento/arraste";
 import { formatarHorario } from "@/lib/semana";
 import { cn } from "@/lib/utils";
 
 /**
+ * Um horário da grade. É alvo de arraste sempre, e origem quando tem receita.
+ *
  * Uma coluna de dia tem cerca de 140px. Nome e horário lado a lado nessa
  * largura viram "Café d… 08:00" — por isso o horário vem em cima, como
- * sobretítulo, e o nome ocupa a linha inteira e quebra se precisar.
+ * sobretítulo, e o nome ocupa a linha inteira.
  */
 export function CartaoDoSlot({
   slot,
@@ -25,10 +29,27 @@ export function CartaoDoSlot({
   const [limpando, iniciarTransicao] = useTransition();
   const { receita } = slot;
 
+  const { setNodeRef: referenciaDoAlvo, isOver } = useDroppable({
+    id: idDoSlot(slot.id),
+  });
+
+  const {
+    attributes,
+    listeners,
+    setNodeRef: referenciaDaOrigem,
+    isDragging,
+  } = useDraggable({
+    id: idDoSlot(slot.id),
+    disabled: receita === null,
+    data: { receita },
+  });
+
   return (
     <article
+      ref={referenciaDoAlvo}
       className={cn(
-        "rounded-2xl bg-card p-3 shadow-soft transition-opacity",
+        "rounded-2xl bg-card p-3 shadow-soft transition-all",
+        isOver && "ring-2 ring-primary",
         limpando && "opacity-60",
       )}
     >
@@ -47,8 +68,29 @@ export function CartaoDoSlot({
       </button>
 
       {receita ? (
-        <div className="mt-2.5 rounded-xl bg-primary-soft p-2.5">
-          <div className="flex items-start gap-2">
+        <div
+          ref={referenciaDaOrigem}
+          className={cn(
+            "mt-2.5 rounded-xl bg-primary-soft p-2.5",
+            isDragging && "opacity-40",
+          )}
+        >
+          <div className="flex items-start gap-1.5">
+            {/* A alça é só o punho: assim a lixeira continua clicável. */}
+            <button
+              type="button"
+              aria-label={`Arrastar ${receita.nome} de ${slot.nomeRefeicao} de ${diaLongo}`}
+              className="-ml-1 mt-0.5 shrink-0 cursor-grab touch-none rounded text-primary-deep/60 transition-colors hover:text-primary-deep active:cursor-grabbing focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-strong"
+              {...listeners}
+              {...attributes}
+            >
+              <GripVertical
+                className="size-3.5"
+                strokeWidth={1.75}
+                aria-hidden="true"
+              />
+            </button>
+
             {receita.imagem_url ? (
               <Image
                 src={receita.imagem_url}
@@ -91,8 +133,13 @@ export function CartaoDoSlot({
           </div>
         </div>
       ) : (
-        <p className="mt-2.5 rounded-xl border border-dashed border-input px-2 py-3.5 text-center text-xs text-text-muted">
-          Sem receita ainda
+        <p
+          className={cn(
+            "mt-2.5 rounded-xl border border-dashed border-input px-2 py-3.5 text-center text-xs text-text-muted transition-colors",
+            isOver && "border-primary bg-primary-soft text-primary-deep",
+          )}
+        >
+          Arraste uma receita aqui
         </p>
       )}
     </article>

@@ -19,7 +19,7 @@ O trabalho está dividido em blocos. Este arquivo é atualizado ao final de cada
 | 3     | Seed de receitas e plano de exemplo              | Concluído  |
 | 4     | Autenticação, layout base e páginas iniciais     | Concluído  |
 | 5     | Grade semanal e navegação entre semanas          | Concluído  |
-| 6     | Arraste de receitas (dnd-kit)                    | Pendente   |
+| 6     | Arraste de receitas (dnd-kit)                    | Concluído  |
 | 7     | Lista de compras em tempo real                   | Pendente   |
 | 8     | Copiar cardápio e histórico                      | Pendente   |
 | 9     | Geração de PDF                                   | Pendente   |
@@ -40,6 +40,7 @@ O trabalho está dividido em blocos. Este arquivo é atualizado ao final de cada
 | Zod           | 3.25     | Ver decisão 7                                      |
 | Vitest        | 4.1      | jsdom + Testing Library                            |
 | PGlite        | 0.5.8    | Postgres em WASM; só nos testes                    |
+| sonner        | 2.0      | avisos quando uma ação falha                       |
 | Playwright    | 1.x      | capturas e teste de fluxo; só em desenvolvimento   |
 
 ---
@@ -526,6 +527,71 @@ servidor por props.
   não acontece.
 - **A alça de arraste (`GripVertical`) também ficou para o Bloco 6**, pelo
   mesmo motivo — afordância que não funciona é pior que afordância ausente.
+
+### 39. O alvo do arraste é o ponteiro, não a maior sobreposição
+
+A regra padrão do dnd-kit (`rectIntersection`) escolhe o alvo pela área de
+sobreposição. A etiqueta arrastada tem 160px e as colunas têm ~140px, então ela
+cobre duas colunas ao mesmo tempo e a receita cai no dia vizinho — foi
+exatamente o que o teste de arraste pegou.
+
+`pointerWithin` resolve: vale o horário sob o ponteiro. Sem ponteiro — arraste
+por teclado — cai para `closestCenter`, que é o que faz sentido ali.
+
+### 40. `DndContext` precisa de `id` fixo com renderização no servidor
+
+O dnd-kit numera os `aria-describedby` dos arrastáveis a partir de um contador
+de módulo. No servidor ele começa do zero a cada requisição; no cliente,
+também — e a numeração diverge. O resultado é um erro de hidratação silencioso,
+que só apareceu porque o overlay de desenvolvimento do Next marcou "1 issue" em
+uma captura de tela.
+
+`id="planejamento-semanal"` no `DndContext` fixa a numeração dos dois lados.
+
+### 41. A alça é o punho, o painel inteiro é alça
+
+Dentro de um horário, só o `GripVertical` carrega os `listeners` do arraste —
+se o cartão inteiro fosse arrastável, a lixeira dentro dele pararia de
+responder ao clique. No painel não há outro alvo, então o item inteiro é a
+alça.
+
+Os sensores também separam intenções: o mouse só começa a arrastar depois de
+6px de deslocamento, e o toque depois de 220ms parado. Sem isso, um clique na
+lixeira viraria um arraste de um pixel, e rolar a tela no celular arrastaria
+receitas sem querer.
+
+### 42. Soltar sobre horário ocupado troca, não descarta
+
+O enunciado do Bloco 6 diz para pôr `NULL` na origem e a receita da origem no
+destino. Quando o destino está vazio — o caso comum — troca e mudança de lugar
+são a mesma coisa. Quando não está, a diferença é que a receita que já estava
+lá some sem aviso.
+
+A troca custa o mesmo código e não perde nada do que a pessoa planejou, então é
+o que está implementado. As duas linhas vão em um `upsert` só, para acontecer
+dentro de uma transação.
+
+### 43. O desfazer é o próprio `useOptimistic`
+
+A grade mantém uma versão otimista da semana e aplica o movimento antes de
+falar com o servidor. Se a ação falhar, o servidor devolve a semana como estava
+e a mudança some da tela sozinha — não há código de reversão.
+
+O que precisa existir é o aviso: sem ele, a receita voltando para o lugar
+pareceria um bug. Daí o `sonner`, com a mensagem que a própria ação devolveu.
+
+A regra do movimento (`aplicarMovimento`) é pura e tem onze testes, incluindo
+o caso de soltar no próprio horário e o de não alterar o array recebido.
+
+### 44. A paleta de receitas fica em cima, não ao lado
+
+Foi coluna lateral primeiro. A aritmética não fecha: sete dias precisam de uns
+1000px para o texto não virar reticências, e uma coluna de 260px empurrava
+domingo para fora da tela em 1440px — a largura de desktop mais comum.
+
+A semana é o produto e fica com a largura inteira; as receitas ocupam uma faixa
+de 70px acima dela. Nunca um modal: um overlay entre a receita e o horário
+quebraria o arraste.
 
 ---
 
