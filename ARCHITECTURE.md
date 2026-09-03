@@ -15,7 +15,7 @@ O trabalho está dividido em blocos. Este arquivo é atualizado ao final de cada
 | Bloco | Escopo                                          | Estado     |
 | ----- | ----------------------------------------------- | ---------- |
 | 1     | Setup do projeto, design tokens, tooling         | Concluído  |
-| 2     | Supabase, schema, RLS, função e trigger, testes  | Pendente   |
+| 2     | Supabase, schema, RLS, função e trigger, testes  | Concluído  |
 | 3     | Seed de receitas e plano de exemplo              | Pendente   |
 | 4     | Autenticação, layout base e páginas iniciais     | Pendente   |
 
@@ -32,6 +32,7 @@ O trabalho está dividido em blocos. Este arquivo é atualizado ao final de cada
 | dnd-kit       | core 6.3 | Usado a partir do Prompt 2                         |
 | Zod           | 3.25     | Ver decisão 7                                      |
 | Vitest        | 4.1      | jsdom + Testing Library                            |
+| PGlite        | 0.5.8    | Postgres em WASM; só nos testes                    |
 
 ---
 
@@ -113,10 +114,10 @@ As variantes `-strong` passam com folga: 4.67:1, 4.62:1 e 4.98:1. Mesma lógica
 para texto auxiliar — `--text-gray` (`#888888`) fica para uso decorativo e
 `--text-muted` (`#6E6E6E`, 5.10:1) é o que aparece em texto corrido.
 
-**Ponto em aberto para o Bloco 4:** o briefing pede botão primário com fundo
-`#5DBB63` e texto branco, o que reprova em AA. Duas saídas viáveis — fundo
-`#2F8437` com texto branco, ou fundo `#5DBB63` com texto escuro. A decisão fica
-para quando os componentes forem estilizados.
+**Decidido pelo usuário:** abordagem híbrida. Texto branco sobre cor sempre usa
+a variante `-strong`; a cor base do briefing continua nos fundos de card, nos
+ícones, nas superfícies grandes e em qualquer lugar sem texto claro por cima.
+A identidade fica de pé e o contraste passa.
 
 ### 6. Tema claro único
 
@@ -150,16 +151,147 @@ quais variáveis existem sem carregar segredo nenhum.
 código que roda no servidor — scripts de seed e rotinas administrativas — e nunca
 em arquivo com `"use client"`.
 
+### 10. Migrações versionadas, aplicáveis pelos dois caminhos
+
+O SQL mora em `supabase/migrations/`, em arquivos numerados por data. Quem usa
+a CLI roda `supabase db push`. Quem prefere o SQL Editor roda `npm run db:sql`,
+que imprime tudo na ordem certa em um bloco só para colar.
+
+Ter os arquivos versionados é o que permite testá-los — e é o que evita que o
+schema real e o repositório sigam caminhos diferentes.
+
+### 11. O nome do usuário mora em `public.profiles`
+
+O briefing fala em estender `auth.users` com `name`. O Supabase Auth não aceita
+colunas novas nessa tabela, então o caminho é uma tabela pública ligada por
+chave estrangeira, preenchida por trigger no cadastro
+(`handle_new_user`, que lê `raw_user_meta_data`).
+
+A coluna se chama `nome`, e não `name`, para o banco não ficar meio em inglês e
+meio em português — todo o resto do schema é `nome`, `descricao`, `porcoes`.
+
+### 12. `dia_da_semana` sem acento
+
+`'terca'`, não `'terça'`. O valor vira chave de React, parâmetro de URL e termo
+de comparação; acento nesses três lugares é fonte de bug silencioso. O rótulo
+com acento é responsabilidade da interface.
+
+### 13. A lista agrupa por (ingrediente, unidade)
+
+300 g de farinha em uma receita e 0,5 kg em outra produzem **duas linhas**.
+Somar exigiria uma tabela de conversão que ainda não existe; converter errado
+é pior do que listar separado. Quando a conversão entrar, ela muda só a função
+`generate_shopping_list`.
+
+`comprado` sobrevive ao recálculo de propósito: acrescentar uma receita muda a
+quantidade do item, não desmarca o que já foi ao carrinho.
+
+### 14. Gatilho por linha, não por comando
+
+`generate_shopping_list` é chamada por um gatilho `for each row` em
+`plan_slots` — e por outro em `recipe_ingredients`, para que editar uma receita
+atualize todo plano que a usa.
+
+Um gatilho `for each statement` com transition tables recalcularia uma vez por
+comando em vez de uma por linha. Não vale ainda: uma semana tem algumas dezenas
+de slots, e o Postgres proíbe transition tables em gatilho com mais de um
+evento, o que exigiria três gatilhos e três funções. Se a escrita em lote
+crescer, é essa a evolução.
+
+### 15. A lista de compras é protegida por privilégio de coluna
+
+Política de RLS diz quais linhas o usuário enxerga; ela não diz quais colunas
+ele pode escrever. Como `quantidade_total` e `unidade` pertencem à função e não
+à pessoa, a proteção é um `GRANT` estreito:
+
+```sql
+grant select            on public.shopping_list to authenticated;
+grant update (comprado) on public.shopping_list to authenticated;
+```
+
+Tentar alterar a quantidade pela API devolve `permission denied`, e há teste
+para isso.
+
+### 16. As migrações são testadas em um Postgres de verdade
+
+`supabase/tests/` sobe PGlite (Postgres compilado para WASM), aplica as mesmas
+migrações e exercita a função, os gatilhos e as políticas. Não há mock: o que
+roda no teste é o SQL que vai para produção.
+
+O schema `auth` e os papéis `anon` / `authenticated` / `service_role` são
+recriados em versão mínima no `db.ts`, inclusive `auth.uid()` — que lê a mesma
+variável de sessão preenchida pelo PostgREST a partir do JWT. Por isso as
+políticas rodam sem adaptação. A migração de storage fica de fora, porque
+depende de um schema que só existe no Supabase.
+
+A suíte tem 35 testes: 11 sobre a lista de compras e o cadastro, 17 sobre RLS,
+5 sobre a classificação de rotas do proxy e 2 sobre o utilitário de classes.
+
+### 17. `proxy.ts`, e o que fazer sem credenciais
+
+O arquivo raiz do Next 16 é `proxy.ts`; ele delega para
+`lib/supabase/middleware.ts`, que é onde a documentação do Supabase manda
+procurar. A lista de rotas públicas fica em `lib/supabase/routes.ts`, separada
+para poder ser testada sem subir o Next.
+
+Sem `NEXT_PUBLIC_SUPABASE_URL` configurada, o proxy deixa a requisição passar
+**em desenvolvimento** — não há sessão para renovar nem dado para proteger, e é
+o que permite abrir o projeto antes das chaves chegarem. Em produção a mesma
+situação levanta erro: aplicação sem Supabase é falha de deploy, não modo de
+operação.
+
+Comparação de prefixo é por segmento: `/loginhack` não é rota pública.
+
+### 18. `Database` precisa ser `type`, nunca `interface`
+
+`lib/supabase/database.types.ts` é escrito à mão, no mesmo formato que
+`supabase gen types` produz, para poder ser substituído pelo gerador quando
+houver projeto acessível.
+
+Uma armadilha custou tempo e merece registro: o supabase-js exige
+`Record<string, unknown>` em cada linha, e **interface não tem index signature
+implícita**. Declarar as linhas com `interface` não gera erro — faz toda
+consulta passar a devolver `never`, silenciosamente. `database.types.assert.ts`
+existe só para essa regressão falhar no `typecheck`.
+
+### 19. Validação de ambiente preguiçosa
+
+`getPublicEnv()` valida com Zod na primeira chamada, não na importação do
+módulo. Assim `next build` roda em um clone sem `.env.local`, e quem esquecer
+de preencher recebe a falha na primeira requisição, dizendo qual variável
+falta — nunca o valor.
+
+`SUPABASE_SERVICE_ROLE_KEY` fica em `lib/env.admin.ts`, sem `server-only`, para
+que scripts de linha de comando possam usá-la. A barreira contra o bundle do
+cliente está em `lib/supabase/admin.ts`, que importa `server-only` e é por onde
+a aplicação consome a chave.
+
 ---
 
 ## Estrutura
 
 ```
-app/            rotas (App Router); tudo é Server Component por padrão
-components/ui/  primitivos do shadcn/ui
-lib/            utilitários e, a partir do Bloco 2, os clientes Supabase
-public/         estáticos
+app/                  rotas (App Router); tudo é Server Component por padrão
+components/ui/        primitivos do shadcn/ui
+lib/                  env, utilitários
+lib/supabase/         clientes (browser, servidor, admin), rotas, tipos
+proxy.ts              sessão e proteção de rotas (o antigo middleware.ts)
+scripts/              utilitários de linha de comando
+supabase/migrations/  o schema, em ordem de aplicação
+supabase/tests/       migrações exercitadas em Postgres real (PGlite)
+public/               estáticos
 ```
+
+## Como escolher o cliente Supabase
+
+| Situação                                        | Módulo                     |
+| ----------------------------------------------- | -------------------------- |
+| ler dados em Server Component ou Server Action  | `lib/supabase/server.ts`   |
+| interatividade no browser (realtime, upload)    | `lib/supabase/client.ts`   |
+| manutenção do catálogo global, seed             | `lib/supabase/admin.ts`    |
+
+Os dois primeiros usam a chave anônima, então a RLS continua sendo a fronteira.
+O terceiro ignora RLS — use só quando não houver outro caminho.
 
 ## Convenções de código
 
@@ -182,3 +314,4 @@ public/         estáticos
 | `npm run typecheck` | gera tipos de rota e roda `tsc --noEmit`   |
 | `npm run test`      | Vitest, execução única                     |
 | `npm run test:watch`| Vitest em modo observação                  |
+| `npm run db:sql`    | imprime as migrações em ordem, para colar  |
