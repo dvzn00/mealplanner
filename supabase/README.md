@@ -21,6 +21,12 @@ npx supabase db push
 Todo o SQL é reexecutável: colar o bloco inteiro de novo não dá erro. Isso vale
 inclusive para retomar depois de uma falha no meio.
 
+A migração de storage é a última da lista e engole erro de permissão. Não é
+detalhe: em projetos onde `storage.objects` pertence a outro papel, ela falha,
+o SQL Editor para no primeiro erro, e tudo que viesse depois deixaria de ser
+aplicado em silêncio. Foi assim que `handle_new_user` ficou uma vez com uma
+definição antiga sem ninguém perceber.
+
 ## Os arquivos, em ordem
 
 | Arquivo                       | O que faz                                              |
@@ -29,8 +35,9 @@ inclusive para retomar depois de uma falha no meio.
 | `..._shopping_list.sql`       | `generate_shopping_list` e os gatilhos que a disparam  |
 | `..._rls.sql`                 | privilégios de tabela e políticas de RLS               |
 | `..._auth_hooks.sql`          | cria `profiles` quando alguém se cadastra              |
-| `..._storage.sql`             | bucket `recipe-images` e suas políticas                |
 | `..._semana_de_exemplo.sql`   | a semana que o novo usuário encontra ao entrar         |
+| `..._lista_dispensados.sql`   | coluna `ignorado` da lista de compras                  |
+| `..._storage.sql`             | bucket `recipe-images`; é a última de propósito       |
 
 ## Depois de aplicar
 
