@@ -20,7 +20,7 @@ O trabalho está dividido em blocos. Este arquivo é atualizado ao final de cada
 | 4     | Autenticação, layout base e páginas iniciais     | Concluído  |
 | 5     | Grade semanal e navegação entre semanas          | Concluído  |
 | 6     | Arraste de receitas (dnd-kit)                    | Concluído  |
-| 7     | Lista de compras em tempo real                   | Pendente   |
+| 7     | Lista de compras em tempo real                   | Concluído  |
 | 8     | Copiar cardápio e histórico                      | Pendente   |
 | 9     | Geração de PDF                                   | Pendente   |
 | 10    | Importação de sugestões                          | Pendente   |
@@ -592,6 +592,51 @@ domingo para fora da tela em 1440px — a largura de desktop mais comum.
 A semana é o produto e fica com a largura inteira; as receitas ocupam uma faixa
 de 70px acima dela. Nunca um modal: um overlay entre a receita e o horário
 quebraria o arraste.
+
+### 45. "Remover da lista" é uma marca, não um `delete`
+
+O Bloco 7 pede um botão para excluir o item da tabela. Excluir funciona — até
+o próximo arraste: `generate_shopping_list` refaz a lista inteira a cada
+mudança no plano, e o item apagado volta sozinho, sem o usuário entender por
+quê.
+
+A coluna `ignorado` resolve. "Já tenho sal em casa" vira uma decisão que
+atravessa o recálculo, como `comprado` já atravessava — o `do update` da
+função só toca em quantidade e carimbo de tempo, então as duas colunas de
+decisão pessoal passam intactas. Há teste em Postgres real para isso.
+
+O privilégio de coluna acompanha: `grant update (comprado, ignorado)`. O
+usuário continua sem poder escrever quantidade nem unidade — essas pertencem à
+função.
+
+Os itens dispensados aparecem em uma seção própria, com o caminho de volta. Um
+item que some sem deixar rastro é um item que a pessoa vai procurar.
+
+### 46. A lista segue a semana escolhida
+
+`/lista-compras?semana=YYYY-MM-DD`, como a grade. Sem o parâmetro, cai na
+semana corrente — ou na mais recente, se o usuário não abriu o app nesta. Os
+dois lados têm atalho um para o outro, sempre carregando a mesma semana.
+
+### 47. Quem mantém a lista em dia é o gatilho, não a interface
+
+O enunciado do 7.2 sugere chamar `generate_shopping_list` a cada alteração,
+pela aplicação. O gatilho de `plan_slots` já faz isso desde o Bloco 2, dentro
+da mesma transação da escrita — o que é mais forte: vale para qualquer caminho
+que mexa nos horários, inclusive um `update` manual no SQL Editor.
+
+Chamar de novo pela aplicação seria um segundo recálculo idêntico. E não seria
+possível: a função foi revogada de `authenticated` no Bloco 3, justamente
+porque recebe um id e roda como dono do schema.
+
+O que a interface faz é `revalidatePath("/lista-compras")` depois de cada ação
+do planejamento. O gatilho garante o dado; a revalidação garante a tela.
+
+### 48. O filtro não vai para a URL
+
+"Mostrar só o que falta" é preferência do momento, não algo que se compartilha
+por link — fica em estado de cliente. A semana, essa sim, vai na URL, porque
+"me manda sua lista da semana que vem" é um pedido real.
 
 ---
 

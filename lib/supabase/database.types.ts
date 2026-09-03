@@ -103,6 +103,8 @@ type ShoppingListItem = {
   quantidade_total: number;
   unidade: string;
   comprado: boolean;
+  /** Item tirado da lista pelo usuário; sobrevive ao recálculo. */
+  ignorado: boolean;
   created_at: string;
   updated_at: string;
 };
@@ -196,9 +198,9 @@ export type Database = {
       };
       shopping_list: {
         Row: ShoppingListItem;
-        Insert: ComDefault<ShoppingListItem, Carimbos | "comprado">;
-        // Pela RLS, o cliente só consegue mexer em `comprado`.
-        Update: { comprado?: boolean };
+        Insert: ComDefault<ShoppingListItem, Carimbos | "comprado" | "ignorado">;
+        // Pela RLS, o cliente só escreve as duas colunas de decisão pessoal.
+        Update: { comprado?: boolean; ignorado?: boolean };
         Relationships: [
         {
           foreignKeyName: "shopping_list_plan_id_fkey";

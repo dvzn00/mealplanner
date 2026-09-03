@@ -166,6 +166,29 @@ describe("generate_shopping_list", () => {
     expect(lista[0].comprado).toBe(true);
   });
 
+  it("mantém dispensado o item que o usuário tirou da lista", async () => {
+    const alho = await criarIngrediente(db, "Alho", "dentes");
+    const primeira = await criarReceita(db, "Primeira", [
+      { ingredientId: alho, quantidade: 2, unidade: "dentes" },
+    ]);
+    const segunda = await criarReceita(db, "Segunda", [
+      { ingredientId: alho, quantidade: 3, unidade: "dentes" },
+    ]);
+
+    await criarSlot(db, { planId, dia: "segunda", recipeId: primeira });
+    await db.query(
+      "update public.shopping_list set ignorado = true where plan_id = $1",
+      [planId],
+    );
+
+    // Acrescentar outra receita força o recálculo do gatilho.
+    await criarSlot(db, { planId, dia: "terca", recipeId: segunda });
+
+    const lista = await lerListaDeCompras(db, planId);
+    expect(Number(lista[0].quantidade_total)).toBe(5);
+    expect(lista[0].ignorado).toBe(true);
+  });
+
   it("acompanha a edição dos ingredientes de uma receita já planejada", async () => {
     const cenoura = await criarIngrediente(db, "Cenoura", "g");
     const sopa = await criarReceita(db, "Sopa", [

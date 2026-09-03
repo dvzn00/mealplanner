@@ -134,6 +134,7 @@ export interface ItemDaLista {
   quantidade_total: string;
   unidade: string;
   comprado: boolean;
+  ignorado: boolean;
 }
 
 /** A lista de compras de um plano, em ordem estável para comparação. */
@@ -142,7 +143,7 @@ export async function lerListaDeCompras(
   planId: string,
 ): Promise<ItemDaLista[]> {
   const { rows } = await db.query<ItemDaLista>(
-    `select i.nome, sl.quantidade_total::text, sl.unidade, sl.comprado
+    `select i.nome, sl.quantidade_total::text, sl.unidade, sl.comprado, sl.ignorado
      from public.shopping_list sl
      join public.ingredients i on i.id = sl.ingredient_id
      where sl.plan_id = $1

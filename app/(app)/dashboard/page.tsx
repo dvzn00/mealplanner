@@ -1,5 +1,8 @@
+import { ShoppingBasket } from "lucide-react";
 import type { Metadata } from "next";
+import Link from "next/link";
 import { redirect } from "next/navigation";
+import { Button } from "@/components/ui/button";
 import { NavegacaoDeSemanas } from "@/components/planejamento/navegacao-de-semanas";
 import { PlanejadorSemanal } from "@/components/planejamento/planejador-semanal";
 import { ehDataIso, segundaDaSemana } from "@/lib/data-iso";
@@ -47,10 +50,19 @@ export default async function PaginaDoPlanejamento({
           </p>
         </div>
 
-        <NavegacaoDeSemanas
-          semanaInicio={plano.semanaInicio}
-          semanaFim={plano.semanaFim}
-        />
+        <div className="flex flex-wrap items-center gap-3">
+          <Button asChild variant="outline">
+            <Link href={`/lista-compras?semana=${plano.semanaInicio}`}>
+              <ShoppingBasket strokeWidth={1.75} aria-hidden="true" />
+              Lista de compras
+            </Link>
+          </Button>
+
+          <NavegacaoDeSemanas
+            semanaInicio={plano.semanaInicio}
+            semanaFim={plano.semanaFim}
+          />
+        </div>
       </header>
 
       <PlanejadorSemanal
