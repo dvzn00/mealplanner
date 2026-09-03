@@ -37,6 +37,35 @@ function conferir(descricao, condicao, achado) {
   }
 }
 
+/** Garante que o usuário tenha pelo menos uma receita no plano. */
+async function prepararLista(userId) {
+  const { data: plano } = await supabase
+    .from("weekly_plans")
+    .select("id")
+    .eq("user_id", userId)
+    .limit(1)
+    .maybeSingle();
+
+  if (!plano) return;
+
+  const [{ data: slots }, { data: receitas }] = await Promise.all([
+    supabase
+      .from("plan_slots")
+      .select("id, recipe_id")
+      .eq("plan_id", plano.id)
+      .limit(3),
+    supabase.from("recipes").select("id").is("user_id", null).limit(1),
+  ]);
+
+  const vazio = slots?.find((slot) => !slot.recipe_id);
+  if (vazio && receitas?.[0]) {
+    await supabase
+      .from("plan_slots")
+      .update({ recipe_id: receitas[0].id })
+      .eq("id", vazio.id);
+  }
+}
+
 const email = `ui-${randomUUID()}@example.com`;
 const senha = randomUUID();
 let userId;
@@ -71,6 +100,10 @@ try {
   await pagina.waitForURL("**/dashboard", { timeout: 20000 });
   conferir("login leva para o destino guardado", true, "dashboard");
 
+  // Garante conteúdo na lista antes de medi-la. A visita ao dashboard acima
+  // já criou o plano da semana; aqui só entra a receita.
+  await prepararLista(userId);
+
   // --- lista de compras: marcar um item e recarregar ---
   await pagina.goto(`${BASE}/lista-compras`, { waitUntil: "networkidle" });
   const primeiro = pagina.getByRole("checkbox").first();
@@ -101,6 +134,97 @@ try {
     .getByRole("heading", { name: "Já no carrinho" })
     .isVisible();
   conferir("o item marcado muda de seção na tela", secaoCarrinho, secaoCarrinho);
+
+  // --- lista: dispensar, sobreviver ao recálculo, restaurar, filtrar ---
+  const nomeDispensado = await pagina
+    .getByRole("button", { name: /^Dispensar .* da lista$/ })
+    .first()
+    .getAttribute("aria-label");
+  const soONome = nomeDispensado
+    ?.replace("Dispensar ", "")
+    .replace(" da lista", "");
+
+  await pagina
+    .getByRole("button", { name: /^Dispensar .* da lista$/ })
+    .first()
+    .click();
+  await pagina.waitForTimeout(1500);
+
+  const { data: dispensados } = await supabase
+    .from("shopping_list")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("ignorado", true);
+
+  conferir(
+    `dispensar "${soONome}" tira o item da lista`,
+    (dispensados?.length ?? 0) === 1,
+    `${dispensados?.length ?? 0} dispensado(s)`,
+  );
+
+  const temSecao = await pagina
+    .getByRole("heading", { name: "Dispensados" })
+    .isVisible();
+  conferir("o item dispensado ganha seção própria", temSecao, temSecao);
+
+  // O gatilho refaz a lista quando o plano muda; a marca precisa sobreviver.
+  const { data: slotComReceita } = await supabase
+    .from("plan_slots")
+    .select("id, recipe_id, plan_id")
+    .not("recipe_id", "is", null)
+    .limit(1)
+    .maybeSingle();
+
+  if (slotComReceita) {
+    await supabase
+      .from("plan_slots")
+      .update({ recipe_id: slotComReceita.recipe_id })
+      .eq("id", slotComReceita.id);
+    await pagina.waitForTimeout(800);
+
+    const { data: aindaDispensados } = await supabase
+      .from("shopping_list")
+      .select("id")
+      .eq("user_id", userId)
+      .eq("ignorado", true);
+
+    conferir(
+      "e continua dispensado depois de o plano mudar",
+      (aindaDispensados?.length ?? 0) === 1,
+      `${aindaDispensados?.length ?? 0} dispensado(s)`,
+    );
+  }
+
+  await pagina.reload({ waitUntil: "networkidle" });
+  await pagina
+    .getByRole("button", { name: /de volta para a lista$/ })
+    .first()
+    .click();
+  await pagina.waitForTimeout(1500);
+
+  const { data: depoisDeVoltar } = await supabase
+    .from("shopping_list")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("ignorado", true);
+
+  conferir(
+    "trazer de volta devolve o item para a lista",
+    (depoisDeVoltar?.length ?? 0) === 0,
+    `${depoisDeVoltar?.length ?? 0} dispensado(s)`,
+  );
+
+  await pagina.getByRole("button", { name: "Mostrar só o que falta" }).click();
+  await pagina.waitForTimeout(300);
+  const carrinhoEscondido = !(await pagina
+    .getByRole("heading", { name: "Já no carrinho" })
+    .isVisible()
+    .catch(() => false));
+  conferir(
+    "o filtro esconde o que já está no carrinho",
+    carrinhoEscondido,
+    carrinhoEscondido,
+  );
 
   // --- perfil: trocar o nome ---
   await pagina.goto(`${BASE}/perfil`, { waitUntil: "networkidle" });
