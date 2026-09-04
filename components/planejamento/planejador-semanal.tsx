@@ -185,6 +185,7 @@ export function PlanejadorSemanal({
                     diaLongo: dia.longo,
                     nomeRefeicao: slot.nomeRefeicao,
                     horario: slot.horario,
+                    receitaId: slot.receita?.id ?? null,
                   })
                 }
               />

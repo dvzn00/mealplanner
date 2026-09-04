@@ -545,6 +545,89 @@ try {
     arquivo.suggestedFilename() === `meal-planner-lista-${segundaAtual()}.pdf`,
     arquivo.suggestedFilename(),
   );
+  // --- no celular, sem arrastar ---
+  // A grade nasceu para o mouse. No toque, arrastar por sete colunas que rolam
+  // de lado é o gesto mais difícil que o produto tem — e por um tempo foi o
+  // único caminho para pôr receita num horário. Estas verificações existem
+  // porque esse beco só aparece com a tela estreita.
+  await pagina.setViewportSize({ width: 375, height: 812 });
+  await pagina.goto(`${BASE}/dashboard`, { waitUntil: "networkidle" });
+
+  const faixa = pagina.locator('aside[aria-label="Receitas para arrastar"] ul');
+  const rolagem = await faixa.evaluate((el) => ({
+    conteudo: el.scrollWidth,
+    visivel: el.clientWidth,
+    toque: getComputedStyle(el.firstElementChild.firstElementChild).touchAction,
+  }));
+
+  conferir(
+    "no celular a faixa de receitas tem mais conteúdo do que cabe",
+    rolagem.conteudo > rolagem.visivel,
+    `${rolagem.conteudo}px em ${rolagem.visivel}px`,
+  );
+  conferir(
+    "e o dedo consegue rolá-la, em vez de o dnd-kit engolir o gesto",
+    rolagem.toque !== "none",
+    `touch-action: ${rolagem.toque}`,
+  );
+
+  const vazios = await slotsDoDia(userId, segundaAtual(), "quarta");
+  const alvo = vazios.find((s) => !s.recipe_id);
+
+  if (alvo) {
+    await pagina
+      .getByRole("button", { name: `Escolher receita para ${alvo.nome_refeicao} de Quarta` })
+      .click();
+
+    const escolha = pagina.getByRole("dialog");
+    await escolha.getByLabel("Receita (opcional)").selectOption({ index: 1 });
+    const nomeEscolhido = await escolha
+      .getByLabel("Receita (opcional)")
+      .evaluate((el) => el.options[el.selectedIndex].textContent.trim());
+    await escolha.getByRole("button", { name: "Salvar" }).click();
+    await pagina.waitForTimeout(2000);
+
+    const depoisDaEscolha = await slotsDoDia(userId, segundaAtual(), "quarta");
+    const preenchido = depoisDaEscolha.find((s) => s.id === alvo.id)?.recipe_id;
+
+    conferir(
+      "tocar num horário vazio e escolher a receita preenche o slot",
+      Boolean(preenchido),
+      preenchido ?? "continuou vazio",
+    );
+    conferir(
+      "e o nome escolhido não veio em branco",
+      nomeEscolhido.length > 0,
+      nomeEscolhido,
+    );
+
+    // De volta a "Sem receita": o mesmo seletor tem que esvaziar.
+    // O cabeçalho do horário não diz o dia no nome acessível — sete colunas
+    // têm "Café da manhã" —, então a busca é feita dentro da coluna da quarta.
+    await pagina
+      .locator('section[aria-labelledby="dia-quarta"]')
+      .getByRole("button", { name: new RegExp(`${alvo.nome_refeicao} — editar`) })
+      .first()
+      .click();
+    const limpeza = pagina.getByRole("dialog");
+    await limpeza.getByLabel("Receita (opcional)").selectOption({ value: "" });
+    await limpeza.getByRole("button", { name: "Salvar" }).click();
+    await pagina.waitForTimeout(2000);
+
+    const depoisDeLimpar = await slotsDoDia(userId, segundaAtual(), "quarta");
+    conferir(
+      'escolher "Sem receita" esvazia o horário de novo',
+      !depoisDeLimpar.find((s) => s.id === alvo.id)?.recipe_id,
+      depoisDeLimpar.find((s) => s.id === alvo.id)?.recipe_id ?? "vazio",
+    );
+  } else {
+    conferir("havia um horário vazio na quarta", false, "nenhum");
+  }
+
+  const rolaDeLado = await pagina.evaluate(
+    () => document.documentElement.scrollWidth > window.innerWidth + 1,
+  );
+  conferir("a página do celular não rola na horizontal", !rolaDeLado, rolaDeLado);
 } finally {
   if (navegador) await navegador.close();
   if (userId) {

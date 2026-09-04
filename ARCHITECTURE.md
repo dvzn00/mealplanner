@@ -1049,6 +1049,43 @@ Ele também pegou uma falha que existia desde o Bloco 1 e não tinha nada a ver
 com o tema escuro: a marca "Meal Planner" em branco sobre o verde `#5DBB63` da
 tela de entrada dava 2,4:1. A marca passou a morar numa pastilha de `bg-card`.
 
+### 79. Arrastar não pode ser o único caminho
+
+O produto foi desenhado para o mouse e a grade é boa nele. No celular a
+mesma grade tem sete colunas que rolam de lado, e arrastar uma receita por
+cima delas é o gesto mais difícil que existe — precisa de precisão, de duas
+regiões roláveis ao mesmo tempo e de uma mão que não cobre o alvo.
+
+Por muito tempo esse era o único caminho: o seletor de receita só aparecia ao
+**criar** um horário, e a semana já nasce com 21 horários prontos. Quem abrisse
+o app no celular conseguia preencher só o que alcançasse arrastando.
+
+Agora o seletor está nos dois modos do diálogo, e o horário vazio é um botão
+que o abre. Arrastar continua sendo o gesto do desktop; deixou de ser o único.
+
+### 80. `touch-none` tirava a rolagem da faixa de receitas
+
+A faixa é `overflow-x-auto` e cada cartão tem 160px — em 375px cabem dois. Só
+que os cartões traziam `touch-action: none`, que o dnd-kit pede para o
+PointerSensor, e isso entrega **todo** gesto sobre o cartão ao arraste. O
+resultado: deslizar sobre uma receita não rolava nada, e as outras ficavam
+inalcançáveis — rolava apenas o vão de 8px entre cartões, que ninguém acerta.
+
+Com `touch-pan-x` o navegador fica com o pan horizontal e o dnd-kit com o
+resto. Deslizar rola, segurar arrasta — que é a mesma separação que o atraso
+de 220ms do `TouchSensor` já fazia no tempo.
+
+### 81. O que os testes de largura não pegavam
+
+As capturas em 375px existiam desde o Bloco 11 e mostravam a faixa com duas
+receitas. Estava tudo certo na imagem: nada transbordava, nada rolava de lado.
+O que a imagem não mostra é que o dedo não consegue chegar na terceira.
+
+`ui:plano` ganhou uma seção de celular que mede o que a foto não conta —
+`scrollWidth` maior que `clientWidth`, `touch-action` diferente de `none`, e o
+caminho inteiro de tocar num horário vazio, escolher a receita e conferir a
+linha no banco.
+
 ## Comandos
 
 | Comando             | O que faz                                  |

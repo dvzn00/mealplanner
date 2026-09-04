@@ -25,7 +25,13 @@ export function ReceitaArrastavel({ receita }: { receita: ReceitaDoSlot }) {
       type="button"
       aria-label={`Arrastar ${receita.nome} para um horário`}
       className={cn(
-        "flex w-40 shrink-0 cursor-grab touch-none items-start gap-2 rounded-2xl bg-card p-3 text-left shadow-soft transition-shadow active:cursor-grabbing xl:w-full",
+        // `touch-pan-x`, e não `touch-none`: a faixa rola na horizontal e os
+        // cartões têm 160px, então no celular só dois cabem por vez. Com
+        // `touch-none` o navegador entrega todo gesto ao dnd-kit e o deslize
+        // deixa de rolar — as outras receitas ficam inalcançáveis. Deixando o
+        // pan horizontal com o navegador, deslizar rola e segurar arrasta, que
+        // é a separação que o atraso de 220ms do TouchSensor já fazia.
+        "flex w-40 shrink-0 cursor-grab touch-pan-x items-start gap-2 rounded-2xl bg-card p-3 text-left shadow-soft transition-shadow active:cursor-grabbing xl:w-full",
         "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-strong",
         isDragging ? "opacity-40" : "hover:shadow-card",
       )}

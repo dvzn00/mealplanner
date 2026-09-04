@@ -29,7 +29,14 @@ export function PainelDeReceitas({ receitas }: { receitas: ReceitaDoSlot[] }) {
 
         {receitas.length > 0 && (
           <p className="text-xs leading-relaxed text-text-muted">
-            Arraste para um horário da semana.
+            {/* No celular a instrução é outra porque o gesto é outro: arrastar
+                por sete colunas que rolam de lado não é praticável com o dedo. */}
+            <span className="md:hidden">
+              Deslize para ver todas, ou toque num horário.
+            </span>
+            <span className="hidden md:inline">
+              Arraste para um horário da semana.
+            </span>
           </p>
         )}
 

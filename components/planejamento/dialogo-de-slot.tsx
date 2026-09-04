@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import {
+  atribuirReceitaAoSlot,
   criarSlot,
   editarSlot,
   removerSlot,
@@ -48,9 +49,13 @@ export type EstadoDoDialogo =
       diaLongo: string;
       nomeRefeicao: string;
       horario: string;
+      receitaId: string | null;
     };
 
-/** Só nome e horário: a receita entra por arraste ou pelo seletor da criação. */
+/**
+ * Nome e horário vão pelo formulário; a receita anda por fora porque mora em
+ * outra ação (`atribuirReceitaAoSlot`, a mesma que o arraste usa).
+ */
 type Campos = Omit<EditarSlotInput, "slotId">;
 
 const camposSchema = editarSlotSchema.omit({ slotId: true });
@@ -70,6 +75,16 @@ export function DialogoDeSlot({
   const [receitaId, setReceitaId] = useState("");
   const [salvando, iniciarTransicao] = useTransition();
   const criando = estado?.modo === "novo";
+
+  // Ajuste de estado durante a renderização, e não um `useEffect`: quando o
+  // diálogo abre em outro horário, o seletor precisa já nascer mostrando a
+  // receita daquele horário. Com efeito, ele pintaria uma vez com o valor
+  // antigo antes de corrigir.
+  const [abertoEm, setAbertoEm] = useState<EstadoDoDialogo | null>(null);
+  if (estado !== abertoEm) {
+    setAbertoEm(estado);
+    setReceitaId(estado?.modo === "editar" ? (estado.receitaId ?? "") : "");
+  }
 
   const {
     register,
@@ -95,22 +110,44 @@ export function DialogoDeSlot({
 
     iniciarTransicao(async () => {
       setErro(null);
-      const resultado = criando
-        ? await criarSlot({
-            planId,
-            dia: estado.dia,
-            nomeRefeicao: campos.nomeRefeicao,
-            horario: campos.horario,
-            recipeId: receitaId || null,
-          })
-        : await editarSlot({ slotId: estado.slotId, ...campos });
 
-      if (resultado.sucesso) {
-        toast.success(criando ? "Refeição criada." : "Refeição salva.");
+      if (estado.modo === "novo") {
+        const resultado = await criarSlot({
+          planId,
+          dia: estado.dia,
+          nomeRefeicao: campos.nomeRefeicao,
+          horario: campos.horario,
+          recipeId: receitaId || null,
+        });
+
+        if (!resultado.sucesso) {
+          setErro(resultado.erro ?? "Não consegui salvar.");
+          return;
+        }
+
+        toast.success("Refeição criada.");
         fechar();
-      } else {
-        setErro(resultado.erro ?? "Não consegui salvar.");
+        return;
       }
+
+      const resultado = await editarSlot({ slotId: estado.slotId, ...campos });
+      if (!resultado.sucesso) {
+        setErro(resultado.erro ?? "Não consegui salvar.");
+        return;
+      }
+
+      // A receita é outra coluna e outra ação: só vai ao banco se mudou.
+      const escolhida = receitaId || null;
+      if (escolhida !== estado.receitaId) {
+        const troca = await atribuirReceitaAoSlot(estado.slotId, escolhida);
+        if (!troca.sucesso) {
+          setErro(troca.erro ?? "Não consegui trocar a receita.");
+          return;
+        }
+      }
+
+      toast.success("Refeição salva.");
+      fechar();
     });
   }
 
@@ -157,24 +194,31 @@ export function DialogoDeSlot({
             {...register("horario")}
           />
 
-          {criando && (
-            <div className="grid gap-2">
-              <Label htmlFor="receita-do-slot">Receita (opcional)</Label>
-              <select
-                id="receita-do-slot"
-                value={receitaId}
-                onChange={(evento) => setReceitaId(evento.target.value)}
-                className="h-12 w-full rounded-pill border border-input bg-card px-5 text-base text-text-dark outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
-              >
-                <option value="">Deixar o horário vazio</option>
-                {receitas.map((receita) => (
-                  <option key={receita.id} value={receita.id}>
-                    {receita.nome}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
+          {/*
+            O seletor vale para os dois modos. Arrastar continua sendo o gesto
+            do produto no desktop, mas era o único caminho para pôr receita num
+            horário — e no celular, com sete colunas rolando de lado, arrastar
+            é o gesto mais difícil que existe. Aqui é onde se escolhe sem
+            depender de mira.
+          */}
+          <div className="grid gap-2">
+            <Label htmlFor="receita-do-slot">Receita (opcional)</Label>
+            <select
+              id="receita-do-slot"
+              value={receitaId}
+              onChange={(evento) => setReceitaId(evento.target.value)}
+              className="h-12 w-full rounded-pill border border-input bg-card px-5 text-base text-text-dark outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+            >
+              <option value="">
+                {criando ? "Deixar o horário vazio" : "Sem receita"}
+              </option>
+              {receitas.map((receita) => (
+                <option key={receita.id} value={receita.id}>
+                  {receita.nome}
+                </option>
+              ))}
+            </select>
+          </div>
 
           <DialogFooter className="gap-2 sm:justify-between">
             {!criando && (

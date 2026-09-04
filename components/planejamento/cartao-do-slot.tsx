@@ -148,15 +148,31 @@ export function CartaoDoSlot({
             )}
           </div>
         </div>
+      ) : somenteLeitura ? (
+        <p className="mt-2.5 rounded-xl border border-dashed border-input px-2 py-3.5 text-center text-xs text-text-muted">
+          Sem receita
+        </p>
       ) : (
-        <p
+        // O vazio é botão, não parágrafo: "arraste aqui" é uma instrução que o
+        // dedo não consegue cumprir com sete colunas rolando de lado. Abre o
+        // mesmo diálogo do cabeçalho, que agora escolhe receita.
+        <button
+          type="button"
+          onClick={aoEditar}
+          aria-label={`Escolher receita para ${slot.nomeRefeicao} de ${diaLongo}`}
           className={cn(
-            "mt-2.5 rounded-xl border border-dashed border-input px-2 py-3.5 text-center text-xs text-text-muted transition-colors",
+            "mt-2.5 block w-full rounded-xl border border-dashed border-input px-2 py-3.5 text-center text-xs text-text-muted transition-colors",
+            "hover:border-primary hover:text-primary-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-strong",
             isOver && "border-primary bg-primary-soft text-primary-deep",
           )}
         >
-          {somenteLeitura ? "Sem receita" : "Arraste uma receita aqui"}
-        </p>
+          <span aria-hidden="true" className="md:hidden">
+            Toque para escolher
+          </span>
+          <span aria-hidden="true" className="hidden md:inline">
+            Arraste ou clique aqui
+          </span>
+        </button>
       )}
     </article>
   );
