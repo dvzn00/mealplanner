@@ -1,4 +1,4 @@
-import type { ReceitaDoSlot } from "@/lib/data/planejamento";
+import type { ReceitaParaArrastar } from "@/lib/data/planejamento";
 import type { ReceitaInput } from "@/lib/receitas/schemas";
 import { createClient } from "@/lib/supabase/server";
 import { normalizarTexto } from "@/lib/texto";
@@ -13,6 +13,8 @@ export interface ReceitaDaLista {
   imagem_url: string | null;
   /** `true` quando é receita do próprio usuário, `false` no catálogo global. */
   propria: boolean;
+  /** Marcada com estrela: aparece no painel de arraste da semana. */
+  favorita: boolean;
 }
 
 interface ComDono {
@@ -57,19 +59,25 @@ export async function listarReceitas(
 ): Promise<ReceitaDaLista[]> {
   const supabase = await createClient();
 
-  const { data, error } = await supabase
-    .from("recipes")
-    .select(
-      "id, nome, descricao, calorias, tempo_preparo, porcoes, imagem_url, user_id",
-    )
-    .order("nome");
+  const [{ data, error }, { data: favoritas }] = await Promise.all([
+    supabase
+      .from("recipes")
+      .select(
+        "id, nome, descricao, calorias, tempo_preparo, porcoes, imagem_url, user_id",
+      )
+      .order("nome"),
+    supabase.from("recipe_favorites").select("recipe_id"),
+  ]);
 
   if (error || !data) return [];
+
+  const marcadas = new Set((favoritas ?? []).map((f) => f.recipe_id));
 
   return semDuplicatasDoCatalogo(data, usuarioId).map(
     ({ user_id, ...receita }) => ({
       ...receita,
       propria: user_id === usuarioId,
+      favorita: marcadas.has(receita.id),
     }),
   );
 }
@@ -77,23 +85,43 @@ export async function listarReceitas(
 /**
  * O que o painel de arraste e o seletor do diálogo precisam saber de cada
  * receita. Uma consulta só serve os dois.
+ *
+ * As favoritas vêm primeiro. O painel mostra só elas quando existem, mas o
+ * seletor do diálogo continua precisando da lista inteira — por isso o corte
+ * é feito lá em cima, na renderização, e não aqui.
  */
-export async function listarReceitasParaArrastar(): Promise<ReceitaDoSlot[]> {
+export async function listarReceitasParaArrastar(): Promise<
+  ReceitaParaArrastar[]
+> {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const { data } = await supabase
-    .from("recipes")
-    .select("id, nome, calorias, imagem_url, user_id")
-    .order("nome");
+  // Duas consultas em paralelo em vez de um join: a RLS de `recipe_favorites`
+  // já recorta por dono, então a segunda volta pequena — são as favoritas de
+  // uma pessoa, não de todas.
+  const [{ data }, { data: favoritas }] = await Promise.all([
+    supabase
+      .from("recipes")
+      .select("id, nome, calorias, imagem_url, user_id")
+      .order("nome"),
+    user
+      ? supabase.from("recipe_favorites").select("recipe_id")
+      : Promise.resolve({ data: null }),
+  ]);
 
   if (!data) return [];
 
+  const marcadas = new Set((favoritas ?? []).map((f) => f.recipe_id));
   const visiveis = user ? semDuplicatasDoCatalogo(data, user.id) : data;
 
-  return visiveis.map(({ user_id, ...receita }) => receita);
+  return visiveis
+    .map(({ user_id, ...receita }) => ({
+      ...receita,
+      favorita: marcadas.has(receita.id),
+    }))
+    .sort((a, b) => Number(b.favorita) - Number(a.favorita));
 }
 
 /**

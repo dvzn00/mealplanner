@@ -553,22 +553,29 @@ try {
   await pagina.setViewportSize({ width: 375, height: 812 });
   await pagina.goto(`${BASE}/dashboard`, { waitUntil: "networkidle" });
 
-  const faixa = pagina.locator('aside[aria-label="Receitas para arrastar"] ul');
-  const rolagem = await faixa.evaluate((el) => ({
-    conteudo: el.scrollWidth,
-    visivel: el.clientWidth,
-    toque: getComputedStyle(el.firstElementChild.firstElementChild).touchAction,
-  }));
+  const painel = pagina.locator(
+    'aside[aria-label="Receitas favoritas para arrastar"] ul',
+  );
+  const gesto = await painel.evaluate((el) => {
+    const cartao = el.firstElementChild.firstElementChild;
+    return {
+      toque: getComputedStyle(cartao).touchAction,
+      rolaDeLado: el.scrollWidth > el.clientWidth + 1,
+    };
+  });
 
+  // O painel é grade, então não há rolagem horizontal para acertar — o que
+  // precisa continuar funcionando é a rolagem vertical da página quando o
+  // dedo começa em cima de um cartão, que é onde ele começa no celular.
   conferir(
-    "no celular a faixa de receitas tem mais conteúdo do que cabe",
-    rolagem.conteudo > rolagem.visivel,
-    `${rolagem.conteudo}px em ${rolagem.visivel}px`,
+    "no celular o painel não rola de lado",
+    !gesto.rolaDeLado,
+    gesto.rolaDeLado,
   );
   conferir(
-    "e o dedo consegue rolá-la, em vez de o dnd-kit engolir o gesto",
-    rolagem.toque !== "none",
-    `touch-action: ${rolagem.toque}`,
+    "e o dedo rola a página, em vez de o dnd-kit engolir o gesto",
+    gesto.toque !== "none",
+    `touch-action: ${gesto.toque}`,
   );
 
   const vazios = await slotsDoDia(userId, segundaAtual(), "quarta");

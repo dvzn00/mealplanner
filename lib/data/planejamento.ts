@@ -10,6 +10,17 @@ export interface ReceitaDoSlot {
   imagem_url: string | null;
 }
 
+/**
+ * A mesma receita, vista do painel de arraste.
+ *
+ * `favorita` mora só aqui porque só o painel decide alguma coisa com ela — a
+ * receita que já está dentro de um horário não tem por que carregar o dado, e
+ * a consulta da grade não o busca.
+ */
+export interface ReceitaParaArrastar extends ReceitaDoSlot {
+  favorita: boolean;
+}
+
 export interface SlotDoPlano {
   id: string;
   dia: DiaDaSemana;

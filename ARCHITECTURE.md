@@ -1086,6 +1086,57 @@ O que a imagem não mostra é que o dedo não consegue chegar na terceira.
 caminho inteiro de tocar num horário vazio, escolher a receita e conferir a
 linha no banco.
 
+### 82. Favorita é uma tabela, não uma coluna
+
+`recipes.user_id` é nulo nas receitas do catálogo — elas são a **mesma linha**
+para todos os usuários. Uma coluna `favorita` ali seria compartilhada: uma
+pessoa favoritaria "Sopa de Legumes" e a estrela apareceria acesa na conta de
+todo mundo. O vínculo é entre uma pessoa e uma receita, então mora em
+`recipe_favorites`, com RLS própria nos três verbos.
+
+A chave primária é o par `(user_id, recipe_id)`. É ela que deixa o cliente
+favoritar com um insert idempotente em vez de ler-decidir-gravar — dois toques
+rápidos no mesmo botão não viram erro de chave duplicada.
+
+### 83. O painel mostra as favoritas, e virou grade
+
+A faixa antiga tinha dois problemas que se reforçavam. Ela mostrava o catálogo
+em ordem alfabética, e alfabeto não é um critério que interesse a ninguém — as
+cinco primeiras receitas não são as que você usa. E era uma faixa rolável de
+cartões de 160px: em 375px cabiam dois.
+
+Somados, os dois transformavam o arraste de atalho em obstáculo. Arrastar era
+o diferencial do produto e tinha virado a parte mais difícil de usar.
+
+Favoritas resolvem o critério; a grade resolve a aritmética. Duas colunas no
+celular, três no tablet, seis no desktop — seis cabem na tela em qualquer
+largura, sem rolagem. E como não há mais rolagem horizontal, o `touch-pan-x`
+da decisão 80 virou `touch-pan-y`: o que precisa passar para o navegador agora
+é a rolagem vertical da página, que é onde o dedo começa no celular.
+
+Sem favoritas o painel não fica vazio — mostra seis receitas como amostra, e a
+dica explica como trocá-la pelas suas.
+
+### 84. O arraste continua sendo do desktop
+
+Favoritas devolvem sentido ao arraste, mas não mudam a geometria do celular:
+a grade é vertical, e arrastar do topo até domingo significa segurar o dedo
+enquanto a página rola sozinha por milhares de pixels. O caminho de toque da
+decisão 79 continua sendo o caminho do celular.
+
+Se um dia isso incomodar, a saída não é melhorar o arraste — é mudar a
+geometria: a semana em abas no celular, com um dia por vez.
+
+### 85. O teste mede capacidade, não quantidade
+
+A primeira versão da verificação exigia seis favoritas no painel e falhou:
+o catálogo tem cinco receitas, então não havia seis para favoritar. O requisito
+nunca foi "ter seis" — é "caber seis".
+
+`ui:smoke` passou a ler `grid-template-columns` e a altura de um cartão, e a
+projetar três fileiras contra a altura da janela. Isso vale mesmo quando a
+conta de teste tem duas receitas, e continua valendo quando o catálogo crescer.
+
 ## Comandos
 
 | Comando             | O que faz                                  |

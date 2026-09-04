@@ -19,6 +19,7 @@ import { toast } from "sonner";
 import type {
   PlanoDaSemana,
   ReceitaDoSlot,
+  ReceitaParaArrastar,
   SlotDoPlano,
 } from "@/lib/data/planejamento";
 import {
@@ -61,7 +62,7 @@ export function PlanejadorSemanal({
   somenteLeitura,
 }: {
   plano: PlanoDaSemana;
-  receitas: ReceitaDoSlot[];
+  receitas: ReceitaParaArrastar[];
   receitasParaEscolha: ReceitaParaEscolha[];
   /** `null` quando a semana mostrada não é a corrente. */
   diaDeHoje: DiaDaSemana | null;
@@ -230,7 +231,7 @@ const porOndeOPonteiroEsta: CollisionDetection = (argumentos) => {
 };
 
 function montarAtribuicao(
-  receitas: ReceitaDoSlot[],
+  receitas: ReceitaParaArrastar[],
   receitaId: string,
   slotId: string,
 ): Movimento | null {

@@ -545,6 +545,124 @@ try {
     primeiroFoco || "nada focado",
   );
 
+  // --- favoritas ---
+  // A estrela é o que decide o conteúdo do painel de arraste. Vale conferir os
+  // dois lados: que ela grava por usuário no banco, e que o painel obedece.
+  await pagina.goto(`${BASE}/receitas`, { waitUntil: "networkidle" });
+
+  const estrelas = pagina.getByRole("button", { name: /^Favoritar / });
+  const nomeFavoritado = (await estrelas.first().getAttribute("aria-label"))
+    .replace("Favoritar ", "")
+    .trim();
+
+  await estrelas.first().click();
+  await pagina.waitForTimeout(1800);
+
+  const { count: favoritadas } = await supabase
+    .from("recipe_favorites")
+    .select("recipe_id", { count: "exact", head: true })
+    .eq("user_id", userId);
+
+  conferir("a estrela grava a favorita do usuário", favoritadas === 1, favoritadas);
+
+  const marcada = await estrelas.first().getAttribute("aria-pressed");
+  conferir("e o botão passa a anunciar o estado", marcada === "true", marcada);
+
+  await pagina.goto(`${BASE}/dashboard`, { waitUntil: "networkidle" });
+  const painel = pagina.locator(
+    'aside[aria-label="Receitas favoritas para arrastar"]',
+  );
+  const itensDoPainel = await painel.locator("li").count();
+  const tituloDoPainel = await painel.getByRole("heading").textContent();
+
+  conferir(
+    "o painel passa a mostrar só a favorita",
+    itensDoPainel === 1,
+    `${itensDoPainel} no painel`,
+  );
+  conferir(
+    "e o título vira Favoritas",
+    tituloDoPainel.trim() === "Favoritas",
+    tituloDoPainel,
+  );
+  conferir(
+    "a favorita certa está lá",
+    await painel.getByText(nomeFavoritado, { exact: false }).first().isVisible(),
+    nomeFavoritado,
+  );
+
+  // Seis favoritas têm que caber na tela do celular sem rolar. É o requisito
+  // que motivou a grade: a faixa antiga cabia duas em 375px.
+  await pagina.goto(`${BASE}/receitas`, { waitUntil: "networkidle" });
+  const quantasEstrelas = await estrelas.count();
+  for (let i = 1; i < Math.min(6, quantasEstrelas); i += 1) {
+    await estrelas.nth(i).click();
+    await pagina.waitForTimeout(900);
+  }
+
+  await pagina.setViewportSize({ width: 375, height: 812 });
+  await pagina.goto(`${BASE}/dashboard`, { waitUntil: "networkidle" });
+
+  const noPainelAgora = await painel.locator("li").count();
+  conferir(
+    "todas as favoritadas aparecem no painel",
+    noPainelAgora === Math.min(6, quantasEstrelas),
+    `${noPainelAgora} de ${Math.min(6, quantasEstrelas)}`,
+  );
+
+  // O catálogo tem cinco receitas, então nem sempre dá para favoritar seis de
+  // verdade. O requisito é de capacidade, não de quantidade: a grade tem que
+  // comportar seis na tela. Medimos as colunas e projetamos três fileiras.
+  const capacidade = await painel.evaluate((el) => {
+    const lista = el.querySelector("ul");
+    const primeiro = lista.querySelector("li");
+    const estilo = getComputedStyle(lista);
+
+    return {
+      colunas: estilo.gridTemplateColumns.split(" ").filter(Boolean).length,
+      alturaDaLinha: primeiro.getBoundingClientRect().height,
+      vao: parseFloat(estilo.rowGap) || 0,
+      topoDoPainel: el.getBoundingClientRect().top,
+      janela: window.innerHeight,
+      rolaDeLado: lista.scrollWidth > lista.clientWidth + 1,
+    };
+  });
+
+  const fileirasParaSeis = Math.ceil(6 / capacidade.colunas);
+  const alturaDeSeis =
+    fileirasParaSeis * capacidade.alturaDaLinha +
+    (fileirasParaSeis - 1) * capacidade.vao;
+  const sobraTela =
+    capacidade.topoDoPainel + alturaDeSeis + 120 < capacidade.janela;
+
+  conferir(
+    "no celular a grade tem duas colunas",
+    capacidade.colunas === 2,
+    `${capacidade.colunas} coluna(s)`,
+  );
+  conferir(
+    "e seis favoritas caberiam na tela sem rolar",
+    sobraTela && !capacidade.rolaDeLado,
+    `${fileirasParaSeis} fileiras = ${Math.round(alturaDeSeis)}px numa tela de ${capacidade.janela}px`,
+  );
+
+  // Desfavoritar devolve a receita para fora do painel.
+  await pagina.setViewportSize({ width: 1280, height: 900 });
+  await pagina.goto(`${BASE}/receitas`, { waitUntil: "networkidle" });
+  await estrelas.first().click();
+  await pagina.waitForTimeout(1800);
+
+  const { count: favoritasRestantes } = await supabase
+    .from("recipe_favorites")
+    .select("recipe_id", { count: "exact", head: true })
+    .eq("user_id", userId);
+
+  conferir(
+    "clicar de novo tira das favoritas",
+    favoritasRestantes === Math.min(6, quantasEstrelas) - 1,
+    favoritasRestantes,
+  );
+
   // --- tema escuro ---
   // O que interessa aqui não é a cor: é que a escolha sobreviva ao recarregar
   // sem piscar claro antes. O botão troca de nome acessível junto com o ícone,

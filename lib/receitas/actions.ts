@@ -357,3 +357,59 @@ export async function atualizarReceita(
     return OK;
   });
 }
+
+/**
+ * Marca ou desmarca uma receita como favorita.
+ *
+ * As favoritas são o que o painel de arraste mostra. O catálogo cresce e a
+ * faixa não estica: sem um recorte escolhido pela pessoa, ela exibia as
+ * primeiras receitas em ordem alfabética, que é um critério que não interessa
+ * a ninguém — e no celular só duas cabiam.
+ *
+ * Favoritar é `insert` com `ignoreDuplicates`, e não um "ler, decidir, gravar":
+ * dois toques rápidos no mesmo botão não podem virar erro de chave duplicada.
+ * O `user_id` vem da sessão, nunca do cliente — a política de `with check`
+ * recusaria de qualquer jeito, mas mandar o certo evita depender disso.
+ */
+export async function alternarFavorita(
+  receitaId: string,
+  favoritar: boolean,
+): Promise<ResultadoDaAcao> {
+  return protegida("Não consegui mudar a favorita.", async () => {
+    const validado = idSchema.safeParse(receitaId);
+    if (!validado.success) return falha("Receita inválida.");
+
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) return falha("Faça login de novo para continuar.");
+
+    const { error } = favoritar
+      ? await supabase
+          .from("recipe_favorites")
+          .upsert(
+            { user_id: user.id, recipe_id: validado.data },
+            { onConflict: "user_id,recipe_id", ignoreDuplicates: true },
+          )
+      : await supabase
+          .from("recipe_favorites")
+          .delete()
+          .eq("user_id", user.id)
+          .eq("recipe_id", validado.data);
+
+    if (error) {
+      return falha(
+        favoritar
+          ? "Não consegui favoritar essa receita."
+          : "Não consegui tirar essa receita das favoritas.",
+      );
+    }
+
+    revalidatePath("/receitas");
+    revalidatePath("/dashboard");
+
+    return OK;
+  });
+}

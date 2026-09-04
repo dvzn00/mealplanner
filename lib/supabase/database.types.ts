@@ -119,6 +119,16 @@ type PlanCopy = {
   created_at: string;
 };
 
+/**
+ * O vínculo entre uma pessoa e uma receita que ela quer à mão. Sem `id`: a
+ * chave é o par, então favoritar duas vezes não cria duas linhas.
+ */
+type RecipeFavorite = {
+  user_id: string;
+  recipe_id: string;
+  created_at: string;
+};
+
 /** Colunas com default no banco viram opcionais na escrita. */
 type ComDefault<T, K extends keyof T> = Omit<T, K> & Partial<Pick<T, K>>;
 
@@ -226,6 +236,21 @@ export type Database = {
         >;
         Update: Partial<PlanCopy>;
         Relationships: [];
+      };
+      recipe_favorites: {
+        Row: RecipeFavorite;
+        Insert: ComDefault<RecipeFavorite, "created_at">;
+        // Sem update: uma favorita não tem o que editar.
+        Update: Partial<RecipeFavorite>;
+        Relationships: [
+          {
+            foreignKeyName: "recipe_favorites_recipe_id_fkey";
+            columns: ["recipe_id"];
+            isOneToOne: false;
+            referencedRelation: "recipes";
+            referencedColumns: ["id"];
+          },
+        ];
       };
     };
     Views: Record<never, never>;

@@ -4,12 +4,13 @@ import {
   Clock,
   Flame,
   Pencil,
+  Star,
   Trash2,
   Users,
   UtensilsCrossed,
 } from "lucide-react";
 import Link from "next/link";
-import { useTransition } from "react";
+import { useOptimistic, useTransition } from "react";
 import { toast } from "sonner";
 import {
   AlertDialog,
@@ -23,11 +24,32 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import type { ReceitaDaLista } from "@/lib/data/receitas";
-import { excluirReceita } from "@/lib/receitas/actions";
+import { alternarFavorita, excluirReceita } from "@/lib/receitas/actions";
 import { cn } from "@/lib/utils";
 
 export function CartaoDeReceita({ receita }: { receita: ReceitaDaLista }) {
   const [apagando, iniciarTransicao] = useTransition();
+
+  // Transição própria, e não a de apagar: favoritar não deve apagar o cartão
+  // de meio tom enquanto salva.
+  const [, iniciarFavorita] = useTransition();
+  const [favorita, preverFavorita] = useOptimistic(
+    receita.favorita,
+    (_atual: boolean, proxima: boolean) => proxima,
+  );
+
+  function alternar() {
+    const proxima = !favorita;
+
+    iniciarFavorita(async () => {
+      preverFavorita(proxima);
+
+      const resultado = await alternarFavorita(receita.id, proxima);
+      if (!resultado.sucesso) {
+        toast.error(resultado.erro ?? "Não consegui mudar a favorita.");
+      }
+    });
+  }
 
   return (
     <article
@@ -44,11 +66,38 @@ export function CartaoDeReceita({ receita }: { receita: ReceitaDaLista }) {
           <UtensilsCrossed className="size-5" strokeWidth={1.75} />
         </span>
 
-        {receita.propria && (
-          <span className="rounded-pill bg-secondary-soft px-3 py-1 text-xs font-semibold text-secondary-deep">
-            Sua receita
-          </span>
-        )}
+        <div className="ml-auto flex items-center gap-2">
+          {receita.propria && (
+            <span className="rounded-pill bg-secondary-soft px-3 py-1 text-xs font-semibold text-secondary-deep">
+              Sua receita
+            </span>
+          )}
+
+          {/*
+            `aria-pressed` em vez de dois rótulos diferentes: o leitor de tela
+            anuncia "Favoritar — pressionado", que é o estado, não uma ordem
+            que muda de texto embaixo do dedo.
+          */}
+          <button
+            type="button"
+            onClick={alternar}
+            aria-pressed={favorita}
+            aria-label={`Favoritar ${receita.nome}`}
+            className={cn(
+              "inline-flex size-9 shrink-0 items-center justify-center rounded-pill transition-colors",
+              "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-strong",
+              favorita
+                ? "bg-secondary-soft text-secondary-deep"
+                : "text-text-muted hover:bg-secondary-soft hover:text-secondary-deep",
+            )}
+          >
+            <Star
+              className={cn("size-5", favorita && "fill-current")}
+              strokeWidth={1.75}
+              aria-hidden="true"
+            />
+          </button>
+        </div>
       </div>
 
       <h3 className="text-base font-semibold leading-snug text-text-dark">

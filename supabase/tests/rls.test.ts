@@ -29,8 +29,8 @@ beforeEach(async () => {
   await db.exec(`
     truncate
       public.plan_copies, public.shopping_list, public.plan_slots,
-      public.weekly_plans, public.recipe_ingredients, public.recipes,
-      public.ingredients, public.profiles, auth.users
+      public.weekly_plans, public.recipe_favorites, public.recipe_ingredients,
+      public.recipes, public.ingredients, public.profiles, auth.users
     cascade;
   `);
 
@@ -194,6 +194,94 @@ describe("RLS: receitas", () => {
     });
 
     expect(total).toBe(0);
+  });
+});
+
+describe("RLS: favoritas", () => {
+  // Favorita é vínculo entre uma pessoa e uma receita, e não um atributo da
+  // receita — a global é a mesma linha para todo mundo. Estes testes são o que
+  // garante que ninguém veja nem escreva a estrela de outra pessoa.
+  it("a favorita de uma não aparece para a outra", async () => {
+    await comoUsuario(db, ana, (tx) =>
+      tx.query(
+        "insert into public.recipe_favorites (user_id, recipe_id) values ($1, $2)",
+        [ana, receitaGlobal],
+      ),
+    );
+
+    const doBruno = await comoUsuario(db, bruno, async (tx) => {
+      const { rows } = await tx.query<{ c: number }>(
+        "select count(*)::int as c from public.recipe_favorites",
+      );
+      return rows[0].c;
+    });
+
+    const daAna = await comoUsuario(db, ana, async (tx) => {
+      const { rows } = await tx.query<{ c: number }>(
+        "select count(*)::int as c from public.recipe_favorites",
+      );
+      return rows[0].c;
+    });
+
+    expect(doBruno).toBe(0);
+    expect(daAna).toBe(1);
+  });
+
+  it("não dá para favoritar em nome de outra pessoa", async () => {
+    await expect(
+      comoUsuario(db, bruno, (tx) =>
+        tx.query(
+          "insert into public.recipe_favorites (user_id, recipe_id) values ($1, $2)",
+          [ana, receitaGlobal],
+        ),
+      ),
+    ).rejects.toThrow(/row-level security/i);
+  });
+
+  it("desfavoritar a de outra pessoa não afeta nenhuma linha", async () => {
+    await db.query(
+      "insert into public.recipe_favorites (user_id, recipe_id) values ($1, $2)",
+      [ana, receitaGlobal],
+    );
+
+    await comoUsuario(db, bruno, (tx) =>
+      tx.query("delete from public.recipe_favorites where recipe_id = $1", [
+        receitaGlobal,
+      ]),
+    );
+
+    const { rows } = await db.query<{ c: number }>(
+      "select count(*)::int as c from public.recipe_favorites where user_id = $1",
+      [ana],
+    );
+    expect(rows[0].c).toBe(1);
+  });
+
+  it("favoritar duas vezes é o mesmo que favoritar uma", async () => {
+    // A chave primária é o par. É ela que deixa o cliente usar um insert
+    // idempotente em vez de ler antes de gravar — dois toques rápidos no
+    // mesmo botão não podem virar erro.
+    await expect(
+      db.query(
+        `insert into public.recipe_favorites (user_id, recipe_id)
+         values ($1, $2), ($1, $2)`,
+        [ana, receitaGlobal],
+      ),
+    ).rejects.toThrow(/duplicate key|unique/i);
+  });
+
+  it("apagar a receita leva a favorita junto", async () => {
+    await db.query(
+      "insert into public.recipe_favorites (user_id, recipe_id) values ($1, $2)",
+      [ana, receitaDaAna],
+    );
+
+    await db.query("delete from public.recipes where id = $1", [receitaDaAna]);
+
+    const { rows } = await db.query<{ c: number }>(
+      "select count(*)::int as c from public.recipe_favorites",
+    );
+    expect(rows[0].c).toBe(0);
   });
 });
 
