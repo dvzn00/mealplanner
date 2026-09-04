@@ -495,7 +495,7 @@ try {
   await pagina.goto(`${BASE}/dashboard`, { waitUntil: "networkidle" });
 
   const comLista = await pagina.request.get(
-    `${BASE}/api/reports/generate-pdf?semana=${segundaAtual()}&lista=1`,
+    `${BASE}/api/reports/generate-pdf?semana=${segundaAtual()}&conteudo=tudo`,
   );
   const bytes = await comLista.body();
 
@@ -512,24 +512,37 @@ try {
     comLista.headers()["content-disposition"],
   );
 
-  const semLista = await pagina.request.get(
-    `${BASE}/api/reports/generate-pdf?semana=${segundaAtual()}&lista=0`,
+  const soCardapio = await pagina.request.get(
+    `${BASE}/api/reports/generate-pdf?semana=${segundaAtual()}&conteudo=cardapio`,
   );
-  const bytesSemLista = await semLista.body();
+  const soLista = await pagina.request.get(
+    `${BASE}/api/reports/generate-pdf?semana=${segundaAtual()}&conteudo=lista`,
+  );
+  const bytesSoCardapio = await soCardapio.body();
+  const bytesSoLista = await soLista.body();
+
   conferir(
-    "sem a lista de compras o arquivo é menor",
-    bytesSemLista.length < bytes.length,
-    `${bytesSemLista.length} contra ${bytes.length} bytes`,
+    "cada folha sozinha é menor que as duas juntas",
+    bytesSoCardapio.length < bytes.length && bytesSoLista.length < bytes.length,
+    `cardápio ${bytesSoCardapio.length}, lista ${bytesSoLista.length}, tudo ${bytes.length}`,
+  );
+  conferir(
+    "e o nome do arquivo diz o que tem dentro",
+    (soLista.headers()["content-disposition"] ?? "").includes(
+      `meal-planner-lista-${segundaAtual()}.pdf`,
+    ),
+    soLista.headers()["content-disposition"],
   );
 
-  // O botão da interface, do clique ao download.
+  // O botão da interface, do clique ao download, escolhendo só a lista.
   await pagina.getByRole("button", { name: "Gerar PDF" }).click();
+  await pagina.getByLabel("Só a lista de compras").check();
   const baixando = pagina.waitForEvent("download", { timeout: 20000 });
   await pagina.getByRole("link", { name: "Baixar" }).click();
   const arquivo = await baixando;
   conferir(
-    "o botão baixa o arquivo com o nome certo",
-    arquivo.suggestedFilename() === `meal-planner-${segundaAtual()}.pdf`,
+    "o botão respeita a escolha de conteúdo",
+    arquivo.suggestedFilename() === `meal-planner-lista-${segundaAtual()}.pdf`,
     arquivo.suggestedFilename(),
   );
 } finally {

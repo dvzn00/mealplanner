@@ -896,6 +896,46 @@ sempre falta lembrar de alguma coisa no corredor do mercado, e a lista impressa
 Zebra saiu. Fundo colorido só na faixa do topo: tinta em tabela não ajuda a
 ler, e filete fino com espaço em branco faz o mesmo trabalho por menos.
 
+### 69. Três conteúdos, um nome de arquivo que os distingue
+
+`?conteudo=tudo|cardapio|lista`. Com a lista em folha própria, "só a lista"
+deixou de ser um recorte e virou uma escolha inteira — é o caso de quem planeja
+na tela e leva só o papel do mercado.
+
+Rádios nativos no diálogo, não três botões com estado: a escolha é entre coisas
+exclusivas, e é isso que o rádio já significa para quem navega por teclado ou
+leitor de tela.
+
+O nome do arquivo carrega o sufixo — `meal-planner-lista-2026-08-31.pdf`. Três
+PDFs da mesma semana com o mesmo nome na pasta de downloads não ajudam ninguém.
+
+### 70. O cabeçalho do PDF ganhou a curva que o resto do produto já tinha
+
+O briefing pede "estilo flat com toque orgânico, ilustrações curvas". A tela de
+login tem círculos suaves sobre o verde; a faixa do PDF era o único lugar que
+respondia com um retângulo. Agora a borda de baixo é uma curva desenhada em
+SVG, com dois círculos de branco quase transparente atrás do texto.
+
+Custo de tinta: nenhum que importe. Em impressora preto e branco os círculos
+somem, que é o comportamento certo para enfeite.
+
+### 71. Horário vazio virou linha de escrever
+
+No papel, um travessão é um buraco; uma linha é um convite. Os horários sem
+receita agora imprimem um filete, e a folha do cardápio passa a servir também
+para quem prefere planejar à caneta na cozinha.
+
+### 72. Dá para olhar o PDF antes de entregá-lo
+
+`npm run pdf:preview` gera o arquivo e o rasteriza em PNG por folha.
+
+Isso resolveu um ponto cego real: o `@react-pdf` embute a fonte com
+subconjunto de glifos, então não dá para ler o texto do arquivo, e o Chromium
+sem interface baixa PDF em vez de desenhar. Durante três entregas eu descrevi
+um layout que nunca tinha visto. A rasterização é feita pelo pdf.js dentro da
+própria página do navegador — e foi olhando o resultado que apareceram o
+travessão no horário vazio e o desperdício de espaço nos dias sem receita.
+
 ---
 
 ## Estrutura
@@ -958,3 +998,4 @@ O terceiro ignora RLS — use só quando não houver outro caminho.
 | `npm run screenshots` | fotografa as telas em quatro larguras    |
 | `npm run ui:smoke`  | percorre os fluxos em um navegador real    |
 | `npm run ui:plano`  | exercita a grade semanal em um navegador   |
+| `npm run pdf:preview` | gera o PDF e o rasteriza para conferência |

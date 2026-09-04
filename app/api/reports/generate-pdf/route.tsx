@@ -2,7 +2,10 @@ import { renderToBuffer } from "@react-pdf/renderer";
 import { NextResponse, type NextRequest } from "next/server";
 import { ehDataIso, segundaDaSemana } from "@/lib/data-iso";
 import { obterRelatorioDaSemana } from "@/lib/data/relatorio";
-import { DocumentoDoPlano } from "@/lib/pdf/documento-do-plano";
+import {
+  DocumentoDoPlano,
+  type ConteudoDoPdf,
+} from "@/lib/pdf/documento-do-plano";
 import { segundaDaSemanaAtual } from "@/lib/semana";
 import { createClient } from "@/lib/supabase/server";
 
@@ -17,6 +20,10 @@ import { createClient } from "@/lib/supabase/server";
  * requisição — a RLS continua sendo a fronteira, e não há uma ida a mais ao
  * banco só para atravessar uma Server Action.
  */
+function lerConteudo(valor: string | null): ConteudoDoPdf {
+  return valor === "cardapio" || valor === "lista" ? valor : "tudo";
+}
+
 export async function GET(request: NextRequest) {
   const supabase = await createClient();
   const {
@@ -33,7 +40,7 @@ export async function GET(request: NextRequest) {
     pedida && ehDataIso(pedida)
       ? segundaDaSemana(pedida)
       : segundaDaSemanaAtual();
-  const incluirLista = searchParams.get("lista") !== "0";
+  const conteudo = lerConteudo(searchParams.get("conteudo"));
 
   const relatorio = await obterRelatorioDaSemana(semana);
 
@@ -42,13 +49,17 @@ export async function GET(request: NextRequest) {
   }
 
   const pdf = await renderToBuffer(
-    <DocumentoDoPlano relatorio={relatorio} incluirLista={incluirLista} />,
+    <DocumentoDoPlano relatorio={relatorio} conteudo={conteudo} />,
   );
+
+  // O nome do arquivo diz o que tem dentro: na pasta de downloads, três PDFs
+  // da mesma semana com o mesmo nome não ajudam ninguém.
+  const sufixo = conteudo === "tudo" ? "" : `-${conteudo}`;
 
   return new NextResponse(new Uint8Array(pdf), {
     headers: {
       "Content-Type": "application/pdf",
-      "Content-Disposition": `attachment; filename="meal-planner-${semana}.pdf"`,
+      "Content-Disposition": `attachment; filename="meal-planner${sufixo}-${semana}.pdf"`,
       "Cache-Control": "no-store",
     },
   });

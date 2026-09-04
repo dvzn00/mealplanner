@@ -1,4 +1,13 @@
-import { Document, Page, StyleSheet, Text, View } from "@react-pdf/renderer";
+import {
+  Circle,
+  Document,
+  Page,
+  Path,
+  StyleSheet,
+  Svg,
+  Text,
+  View,
+} from "@react-pdf/renderer";
 import { formatarPeriodo } from "@/lib/data-iso";
 import type {
   IngredienteDoRelatorio,
@@ -40,15 +49,18 @@ const estilos = StyleSheet.create({
     color: TINTA,
   },
 
+  faixa: { marginBottom: 22 },
   topo: {
     backgroundColor: VERDE,
-    paddingVertical: 20,
+    paddingTop: 22,
+    paddingBottom: 16,
     paddingHorizontal: 36,
-    marginBottom: 22,
     flexDirection: "row",
     alignItems: "flex-end",
     justifyContent: "space-between",
   },
+  enfeite: { position: "absolute", top: 0, left: 0 },
+  onda: { marginTop: -0.5 },
   marca: { color: "#FFFFFF", fontSize: 16, fontFamily: "Helvetica-Bold" },
   secaoDoTopo: {
     color: VERDE_CLARO,
@@ -90,7 +102,15 @@ const estilos = StyleSheet.create({
   },
   nomeDaRefeicao: { color: CINZA, fontSize: 8 },
   receita: { fontSize: 9, lineHeight: 1.3 },
-  semReceita: { fontSize: 9, color: "#A8B0AA" },
+  // Horário vazio vira linha de escrever: no papel, o espaço em branco é
+  // um convite, e um travessão é só um buraco.
+  linhaParaPreencher: {
+    borderBottomWidth: 0.7,
+    borderBottomColor: FILETE,
+    height: 11,
+    marginTop: 2,
+    marginRight: 4,
+  },
   calorias: { fontSize: 8, color: CINZA, textAlign: "right", width: 40 },
 
   resumo: { fontSize: 9, color: CINZA, marginBottom: 12, lineHeight: 1.4 },
@@ -150,14 +170,49 @@ const estilos = StyleSheet.create({
   },
 });
 
+const LARGURA = 595.28;
+
+/**
+ * A faixa do topo.
+ *
+ * O briefing pede "estilo flat com toque orgânico, ilustrações curvas", e o
+ * retângulo seco era a única peça do produto que ignorava isso. A borda de
+ * baixo é uma curva, e dois círculos de branco quase transparente dão volume
+ * ao verde sem custar tinta — em cinza de impressora eles somem, o que é o
+ * comportamento certo para enfeite.
+ */
 function Topo({ secao, periodo }: { secao: string; periodo: string }) {
   return (
-    <View style={estilos.topo} fixed>
-      <Text style={estilos.marca}>Meal Planner</Text>
-      <View>
-        <Text style={estilos.secaoDoTopo}>{secao}</Text>
-        <Text style={estilos.periodo}>{periodo}</Text>
+    <View style={estilos.faixa} fixed>
+      <View style={estilos.topo}>
+        <Svg
+          style={estilos.enfeite}
+          width={LARGURA}
+          height={78}
+          viewBox={`0 0 ${LARGURA} 78`}
+        >
+          <Circle cx="88" cy="12" r="52" fill="#FFFFFF" fillOpacity={0.07} />
+          <Circle cx="516" cy="70" r="44" fill="#FFFFFF" fillOpacity={0.06} />
+        </Svg>
+
+        <Text style={estilos.marca}>Meal Planner</Text>
+        <View>
+          <Text style={estilos.secaoDoTopo}>{secao}</Text>
+          <Text style={estilos.periodo}>{periodo}</Text>
+        </View>
       </View>
+
+      <Svg
+        style={estilos.onda}
+        width={LARGURA}
+        height={22}
+        viewBox={`0 0 ${LARGURA} 22`}
+      >
+        <Path
+          d={`M0 0 H${LARGURA} V6 C470 22 344 20 232 12 C150 6 74 8 0 17 Z`}
+          fill={VERDE}
+        />
+      </Svg>
     </View>
   );
 }
@@ -219,9 +274,11 @@ function BlocoDoDia({
           <Text style={estilos.horario}>{item.horario}</Text>
           <View style={{ flex: 1 }}>
             <Text style={estilos.nomeDaRefeicao}>{item.nomeRefeicao}</Text>
-            <Text style={item.receita ? estilos.receita : estilos.semReceita}>
-              {item.receita ?? "—"}
-            </Text>
+            {item.receita ? (
+              <Text style={estilos.receita}>{item.receita}</Text>
+            ) : (
+              <View style={estilos.linhaParaPreencher} />
+            )}
           </View>
           <Text style={estilos.calorias}>
             {item.calorias === null ? "" : `${item.calorias} kcal`}
@@ -259,16 +316,21 @@ function ItemDaLista({ item }: { item: IngredienteDoRelatorio }) {
   );
 }
 
+/** O que sai impresso. */
+export type ConteudoDoPdf = "tudo" | "cardapio" | "lista";
+
 export function DocumentoDoPlano({
   relatorio,
-  incluirLista,
+  conteudo,
 }: {
   relatorio: RelatorioDaSemana;
-  incluirLista: boolean;
+  conteudo: ConteudoDoPdf;
 }) {
   const periodo = formatarPeriodo(relatorio.semanaInicio, relatorio.semanaFim);
   const dias = agruparPorDia(relatorio.refeicoes);
   const aComprar = relatorio.ingredientes.filter((item) => !item.comprado);
+  const comCardapio = conteudo !== "lista";
+  const comLista = conteudo !== "cardapio";
 
   return (
     <Document
@@ -276,6 +338,7 @@ export function DocumentoDoPlano({
       author="Meal Planner"
       language="pt-BR"
     >
+      {comCardapio && (
       <Page size="A4" style={estilos.pagina}>
         <Topo secao="REFEIÇÕES DA SEMANA" periodo={periodo} />
 
@@ -295,12 +358,13 @@ export function DocumentoDoPlano({
 
         <Rodape periodo={periodo} />
       </Page>
+      )}
 
       {/*
         Folha separada de propósito: esta é a que vai no bolso, no mercado.
-        Quem só quer comprar não precisa carregar o cardápio junto.
+        Quem só quer comprar nem imprime o cardápio.
       */}
-      {incluirLista && (
+      {comLista && (
         <Page size="A4" style={estilos.pagina}>
           <Topo secao="LISTA DE COMPRAS" periodo={periodo} />
 
