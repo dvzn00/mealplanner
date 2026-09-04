@@ -697,7 +697,7 @@ uma camada.
 pedir o PDF de uma semana que não existe deve devolver 404, não inventar uma
 semana vazia no banco.
 
-### 54. Helvetica no papel, Poppins na tela
+### 54. O PDF é feito para o papel, não para a tela
 
 O PDF usa Helvetica, uma das fontes que todo leitor já tem, e que cobre os
 acentos do português. Embutir a Poppins acrescentaria uns 100 KB a cada arquivo
@@ -874,6 +874,27 @@ não duplica o catálogo.
 
 A checagem de nome repetido ignora a própria receita — senão ninguém
 conseguiria salvar sem trocar o nome.
+
+### 68. Duas folhas com trabalhos diferentes
+
+A primeira fica na geladeira e responde "o que é hoje". A segunda vai no bolso,
+para o mercado. Antes eram a mesma folha, e quem só queria comprar carregava o
+cardápio da semana junto.
+
+Na folha do cardápio, os dias viraram blocos em duas colunas. A tabela anterior
+tinha 21 linhas repetindo "Segunda" três vezes — some com a forma da semana,
+que é justamente o que a folha existe para mostrar. Cada bloco soma as calorias
+do dia no cabeçalho: é informação que o papel carrega de graça e a tela ainda
+não mostra.
+
+Na folha da lista, cada item tem uma caixa de 11pt para marcar a caneta, e o
+que já estava comprado vem com a caixa preenchida — a folha concorda com o app
+em vez de contradizê-lo. No fim, cinco linhas em branco sob "OUTRAS COISAS":
+sempre falta lembrar de alguma coisa no corredor do mercado, e a lista impressa
+é onde isso é anotado.
+
+Zebra saiu. Fundo colorido só na faixa do topo: tinta em tabela não ajuda a
+ler, e filete fino com espaço em branco faz o mesmo trabalho por menos.
 
 ---
 
