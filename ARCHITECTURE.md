@@ -850,6 +850,31 @@ O teste usa dois ingredientes de propósito: um inventado, que prova a criação
 e um que já existe, que prova o reaproveitamento — o catálogo cresce um, não
 dois.
 
+### 66. Editar reaproveita o formulário de criar
+
+Um segundo formulário para editar viraria duas validações que divergem na
+primeira mudança de regra. `FormularioDeReceita` recebe a receita quando há
+uma: muda os valores iniciais, o rótulo do botão e a ação. Nada mais.
+
+A rota é `/receitas/[id]/editar`. Receita do catálogo ou de outra pessoa
+devolve 404 em vez de abrir um formulário que a RLS não deixaria salvar — a
+página não promete o que o banco vai negar.
+
+### 67. Os ingredientes da edição são gravados antes de o antigo sair
+
+A troca é `upsert` do conjunto novo e só depois `delete` do que sobrou. Na
+ordem inversa — apagar tudo e reinserir — uma falha entre as duas requisições
+deixaria a receita sem ingrediente nenhum, e ela sumiria da lista de compras
+sem ninguém entender por quê.
+
+`upsert` com `onConflict: "recipe_id,ingredient_id"` atualiza a quantidade do
+que continua e insere o que entrou; o `delete ... not in` tira o que saiu. Os
+nomes passam pelo mesmo `obter_ou_criar_ingrediente` da criação, então editar
+não duplica o catálogo.
+
+A checagem de nome repetido ignora a própria receita — senão ninguém
+conseguiria salvar sem trocar o nome.
+
 ---
 
 ## Estrutura

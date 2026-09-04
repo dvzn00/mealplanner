@@ -12,16 +12,25 @@ import {
   CampoDeTextoLongo,
 } from "@/components/auth/campos";
 import { Button } from "@/components/ui/button";
-import { criarReceita } from "@/lib/receitas/actions";
+import type { ReceitaParaEdicao } from "@/lib/data/receitas";
+import { atualizarReceita, criarReceita } from "@/lib/receitas/actions";
 import { receitaSchema, type ReceitaInput } from "@/lib/receitas/schemas";
 import { UNIDADES_SUGERIDAS } from "@/lib/unidades";
 
 const INGREDIENTE_VAZIO = { nome: "", quantidade: 0, unidade: "" };
 
+/**
+ * Serve para criar e para editar. A diferença é só de dados e de rótulo: o
+ * formulário é o mesmo, e um segundo formulário para editar viraria duas
+ * validações que divergem na primeira mudança.
+ */
 export function FormularioDeReceita({
   ingredientesConhecidos,
+  receita,
 }: {
   ingredientesConhecidos: string[];
+  /** Ausente ao criar; presente ao editar. */
+  receita?: ReceitaParaEdicao;
 }) {
   const router = useRouter();
   const listaDeIngredientes = useId();
@@ -36,7 +45,7 @@ export function FormularioDeReceita({
     formState: { errors },
   } = useForm<ReceitaInput>({
     resolver: zodResolver(receitaSchema),
-    defaultValues: {
+    defaultValues: receita?.valores ?? {
       nome: "",
       descricao: "",
       modo_preparo: "",
@@ -56,10 +65,16 @@ export function FormularioDeReceita({
       onSubmit={handleSubmit((dados) =>
         iniciarTransicao(async () => {
           setErro(null);
-          const resultado = await criarReceita(dados);
+          const resultado = receita
+            ? await atualizarReceita(receita.id, dados)
+            : await criarReceita(dados);
 
           if (resultado.sucesso) {
-            toast.success(`"${dados.nome}" entrou nas suas receitas.`);
+            toast.success(
+              receita
+                ? `"${dados.nome}" foi atualizada.`
+                : `"${dados.nome}" entrou nas suas receitas.`,
+            );
             router.push("/receitas");
           } else {
             setErro(resultado.erro ?? "Não consegui salvar.");
@@ -220,7 +235,11 @@ export function FormularioDeReceita({
 
       <div className="flex flex-wrap gap-3">
         <Button type="submit" size="lg" disabled={salvando}>
-          {salvando ? "Salvando…" : "Salvar receita"}
+          {salvando
+            ? "Salvando…"
+            : receita
+              ? "Salvar alterações"
+              : "Salvar receita"}
         </Button>
         <Button asChild variant="ghost" size="lg" type="button">
           <a href="/receitas">Cancelar</a>

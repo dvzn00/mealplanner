@@ -1,4 +1,5 @@
 import type { ReceitaDoSlot } from "@/lib/data/planejamento";
+import type { ReceitaInput } from "@/lib/receitas/schemas";
 import { createClient } from "@/lib/supabase/server";
 import { normalizarTexto } from "@/lib/texto";
 
@@ -111,4 +112,54 @@ export async function listarNomesDeIngredientes(): Promise<string[]> {
     .order("nome");
 
   return (data ?? []).map((ingrediente) => ingrediente.nome);
+}
+
+export interface ReceitaParaEdicao {
+  id: string;
+  valores: ReceitaInput;
+}
+
+/**
+ * Uma receita do usuário, no formato que o formulário espera.
+ *
+ * Devolve `null` para receita do catálogo ou de outra pessoa — a RLS já
+ * esconde a de terceiros, e a global é de leitura para todos. Quem chama
+ * transforma isso em 404 em vez de abrir um formulário que não vai salvar.
+ */
+export async function obterReceitaParaEdicao(
+  id: string,
+): Promise<ReceitaParaEdicao | null> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return null;
+
+  const { data } = await supabase
+    .from("recipes")
+    .select(
+      "id, nome, descricao, modo_preparo, calorias, tempo_preparo, porcoes, user_id, recipe_ingredients(quantidade, unidade, ingredients(nome))",
+    )
+    .eq("id", id)
+    .maybeSingle();
+
+  if (!data || data.user_id !== user.id) return null;
+
+  return {
+    id: data.id,
+    valores: {
+      nome: data.nome,
+      descricao: data.descricao ?? "",
+      modo_preparo: data.modo_preparo,
+      calorias: data.calorias,
+      tempo_preparo: data.tempo_preparo,
+      porcoes: data.porcoes,
+      ingredientes: data.recipe_ingredients.map((ligacao) => ({
+        nome: ligacao.ingredients?.nome ?? "",
+        quantidade: ligacao.quantidade,
+        unidade: ligacao.unidade,
+      })),
+    },
+  };
 }

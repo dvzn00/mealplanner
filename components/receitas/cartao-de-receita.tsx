@@ -1,6 +1,14 @@
 "use client";
 
-import { Clock, Flame, Trash2, Users, UtensilsCrossed } from "lucide-react";
+import {
+  Clock,
+  Flame,
+  Pencil,
+  Trash2,
+  Users,
+  UtensilsCrossed,
+} from "lucide-react";
+import Link from "next/link";
 import { useTransition } from "react";
 import { toast } from "sonner";
 import {
@@ -73,13 +81,23 @@ export function CartaoDeReceita({ receita }: { receita: ReceitaDaLista }) {
         </div>
 
         {receita.propria && (
+          <Link
+            href={`/receitas/${receita.id}/editar`}
+            aria-label={`Editar a receita ${receita.nome}`}
+            className="ml-auto inline-flex size-8 items-center justify-center rounded-pill text-text-muted transition-colors hover:bg-primary-soft hover:text-primary-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-strong"
+          >
+            <Pencil className="size-4" strokeWidth={1.75} aria-hidden="true" />
+          </Link>
+        )}
+
+        {receita.propria && (
           <AlertDialog>
             <AlertDialogTrigger asChild>
               <button
                 type="button"
                 aria-label={`Apagar a receita ${receita.nome}`}
                 disabled={apagando}
-                className="ml-auto inline-flex size-8 items-center justify-center rounded-pill text-text-muted transition-colors hover:bg-secondary-soft hover:text-secondary-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-strong"
+                className="inline-flex size-8 items-center justify-center rounded-pill text-text-muted transition-colors hover:bg-secondary-soft hover:text-secondary-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-strong"
               >
                 <Trash2
                   className="size-4"

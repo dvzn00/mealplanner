@@ -139,27 +139,15 @@ export async function criarReceita(
       .eq("user_id", user.id);
 
     const repetida = (minhas ?? []).some(
-      (receita) => normalizarTexto(receita.nome) === normalizarTexto(campos.nome),
+      (receita) =>
+        normalizarTexto(receita.nome) === normalizarTexto(campos.nome),
     );
 
     if (repetida) {
       return falha(`Você já tem uma receita chamada "${campos.nome}".`);
     }
 
-    const ids = await Promise.all(
-      consolidados.map(async (item) => {
-        const { data, error } = await supabase.rpc(
-          "obter_ou_criar_ingrediente",
-          { p_nome: item.nome, p_unidade: item.unidade },
-        );
-
-        if (error || !data) {
-          throw new Error(`Não consegui registrar "${item.nome}".`);
-        }
-
-        return data;
-      }),
-    );
+    const ids = await resolverIngredientes(supabase, consolidados);
 
     const { data: criada, error: erroDaReceita } = await supabase
       .from("recipes")
@@ -228,6 +216,141 @@ export async function excluirReceita(
 
     revalidatePath("/receitas");
     revalidatePath("/sugestoes");
+    revalidatePath("/dashboard");
+    revalidatePath("/lista-compras");
+
+    return OK;
+  });
+}
+
+type Cliente = Awaited<ReturnType<typeof createClient>>;
+
+/**
+ * Troca os nomes informados por ids do catálogo, criando o que faltar.
+ *
+ * É por aqui que a receita nova cai no mesmo "Azeite de oliva" das prontas —
+ * o que mantém a soma da lista de compras correta.
+ */
+async function resolverIngredientes(
+  supabase: Cliente,
+  itens: { nome: string; unidade: string }[],
+): Promise<string[]> {
+  return Promise.all(
+    itens.map(async (item) => {
+      const { data, error } = await supabase.rpc("obter_ou_criar_ingrediente", {
+        p_nome: item.nome,
+        p_unidade: item.unidade,
+      });
+
+      if (error || !data) {
+        throw new Error(`Não consegui registrar "${item.nome}".`);
+      }
+
+      return data;
+    }),
+  );
+}
+
+/**
+ * Atualiza uma receita do usuário e a lista de ingredientes dela.
+ *
+ * Os ingredientes são gravados por `upsert` e só depois o que sobrou é
+ * apagado: assim a receita nunca fica sem ingrediente nenhum entre as duas
+ * requisições. O gatilho de `recipe_ingredients` refaz a lista de compras de
+ * toda semana que use esta receita.
+ */
+export async function atualizarReceita(
+  receitaId: string,
+  entrada: ReceitaInput,
+): Promise<ResultadoDaAcao> {
+  return protegida("Não consegui salvar essa receita.", async () => {
+    const id = idSchema.safeParse(receitaId);
+    if (!id.success) return falha("Receita inválida.");
+
+    const validado = receitaSchema.safeParse(entrada);
+    if (!validado.success) {
+      return falha(validado.error.issues[0]?.message ?? "Dados inválidos.");
+    }
+
+    const { ingredientes, descricao, ...campos } = validado.data;
+
+    let consolidados;
+    try {
+      consolidados = consolidarIngredientes(ingredientes, "Nesta receita");
+    } catch (erro) {
+      return falha(
+        erro instanceof Error ? erro.message : "Ingredientes inválidos.",
+      );
+    }
+
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) return falha("Sua sessão expirou. Entre de novo.");
+
+    const { data: minhas } = await supabase
+      .from("recipes")
+      .select("id, nome")
+      .eq("user_id", user.id);
+
+    const repetida = (minhas ?? []).some(
+      (receita) =>
+        receita.id !== id.data &&
+        normalizarTexto(receita.nome) === normalizarTexto(campos.nome),
+    );
+
+    if (repetida) {
+      return falha(`Você já tem outra receita chamada "${campos.nome}".`);
+    }
+
+    // `not user_id is null` mantém o catálogo global fora do alcance; a RLS
+    // já cuida das receitas de outras pessoas.
+    const { data: atualizada, error: erroDaReceita } = await supabase
+      .from("recipes")
+      .update({
+        ...campos,
+        descricao: descricao?.trim() ? descricao.trim() : null,
+      })
+      .eq("id", id.data)
+      .not("user_id", "is", null)
+      .select("id")
+      .maybeSingle();
+
+    if (erroDaReceita || !atualizada) {
+      return falha("Essa receita não é sua para editar.");
+    }
+
+    const ids = await resolverIngredientes(supabase, consolidados);
+
+    const { error: erroDoUpsert } = await supabase
+      .from("recipe_ingredients")
+      .upsert(
+        consolidados.map((item, indice) => ({
+          recipe_id: atualizada.id,
+          ingredient_id: ids[indice],
+          quantidade: item.quantidade,
+          unidade: item.unidade,
+        })),
+        { onConflict: "recipe_id,ingredient_id" },
+      );
+
+    if (erroDoUpsert) {
+      return falha("Não consegui salvar os ingredientes. Tente de novo.");
+    }
+
+    const { error: erroDaLimpeza } = await supabase
+      .from("recipe_ingredients")
+      .delete()
+      .eq("recipe_id", atualizada.id)
+      .not("ingredient_id", "in", `(${ids.join(",")})`);
+
+    if (erroDaLimpeza) {
+      return falha("Não consegui tirar os ingredientes removidos.");
+    }
+
+    revalidatePath("/receitas");
     revalidatePath("/dashboard");
     revalidatePath("/lista-compras");
 

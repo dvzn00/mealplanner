@@ -441,6 +441,79 @@ try {
     );
   }
 
+  // --- editar a receita própria ---
+  await pagina.goto(`${BASE}/receitas`, { waitUntil: "networkidle" });
+  await pagina
+    .getByRole("link", { name: `Editar a receita ${nomeDaReceita}` })
+    .click();
+  await pagina.waitForURL("**/editar", { timeout: 20000 });
+
+  const nomePrePreenchido = await pagina
+    .getByLabel("Nome", { exact: true })
+    .inputValue();
+  const quantidadePrePreenchida = await pagina
+    .getByLabel("Quantidade")
+    .first()
+    .inputValue();
+
+  conferir(
+    "o formulário de edição chega preenchido",
+    nomePrePreenchido === nomeDaReceita && quantidadePrePreenchida === "60",
+    `"${nomePrePreenchido}" com ${quantidadePrePreenchida}`,
+  );
+
+  await pagina.getByLabel("Calorias").fill("410");
+  await pagina.getByLabel("Quantidade").first().fill("90");
+  // Tira o segundo ingrediente, para exercitar a limpeza do que saiu.
+  await pagina
+    .getByRole("button", { name: "Tirar o ingrediente 2 da receita" })
+    .click();
+  await pagina.getByRole("button", { name: "Salvar alterações" }).click();
+  await pagina.waitForURL("**/receitas", { timeout: 20000 });
+
+  const { data: editada } = await supabase
+    .from("recipes")
+    .select("calorias, recipe_ingredients(quantidade, ingredient_id)")
+    .eq("id", criada?.id ?? "")
+    .maybeSingle();
+
+  conferir(
+    "editar atualiza os campos da receita",
+    editada?.calorias === 410,
+    editada?.calorias,
+  );
+  conferir(
+    "o ingrediente removido sai, e o que ficou é atualizado",
+    editada?.recipe_ingredients?.length === 1 &&
+      Number(editada.recipe_ingredients[0].quantidade) === 90,
+    `${editada?.recipe_ingredients?.length} ingrediente(s), ${editada?.recipe_ingredients?.[0]?.quantidade}`,
+  );
+
+  const { count: catalogoDepoisDaEdicao } = await supabase
+    .from("ingredients")
+    .select("id", { count: "exact", head: true });
+
+  conferir(
+    "editar não duplica o catálogo",
+    catalogoDepoisDaEdicao === (antesDoCatalogo ?? 0) + 1,
+    `catálogo em ${catalogoDepoisDaEdicao}`,
+  );
+
+  if (slotVazio) {
+    const { data: listaDepois } = await supabase
+      .from("shopping_list")
+      .select("quantidade_total")
+      .eq("plan_id", slotVazio.plan_id)
+      .eq("ingredient_id", ingredienteNovo?.id ?? "")
+      .maybeSingle();
+
+    conferir(
+      "a lista de compras acompanha a edição",
+      Number(listaDepois?.quantidade_total) === 90,
+      listaDepois?.quantidade_total,
+    );
+  }
+
   // --- apagar a receita própria ---
   await pagina.goto(`${BASE}/receitas`, { waitUntil: "networkidle" });
   await pagina
