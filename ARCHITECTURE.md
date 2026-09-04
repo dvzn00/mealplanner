@@ -814,6 +814,42 @@ Onde isso muda: catálogo com milhares de receitas pede busca no banco e
 paginação antes de pedir virtualização — a página deixaria de carregar tudo de
 uma vez, e o problema de renderização some junto.
 
+### 64. Receita própria e a porta estreita do catálogo
+
+O produto só tinha receitas prontas, o que não é um planejador — é um cardápio.
+O schema já suportava receita do usuário; faltava a porta de entrada.
+
+O obstáculo era `ingredients`. A lista de compras soma por `ingredient_id`,
+então "Azeite de oliva" precisa ser a mesma linha para todo mundo — por isso a
+tabela nunca aceitou escrita pela API. Abrir a tabela resolveria o formulário e
+quebraria a soma: cada usuário criaria o seu azeite, e os 45 ml da semana
+virariam três linhas de 5, 15 e 25.
+
+A saída foi `obter_ou_criar_ingrediente`: recebe nome e unidade, devolve o id
+do que já existe e cria só o que falta. O usuário não escolhe id, não renomeia
+o de ninguém, não apaga nada. A corrida entre dois cadastros simultâneos de
+"Farinha de trigo" termina nos dois com o mesmo id.
+
+O campo de ingrediente sugere o catálogo enquanto se digita. Não é conveniência:
+escolher da lista é o que faz a receita nova cair no mesmo ingrediente das
+prontas.
+
+Apagar receita própria entrou junto, sem ter sido pedido. Criar sem poder
+apagar prende a pessoa no primeiro erro de digitação — e o custo era uma ação e
+uma confirmação.
+
+### 65. O teste de navegador limpa o catálogo atrás de si
+
+`ingredients` não pertence a ninguém: o ingrediente que o teste inventa
+sobrevive ao usuário descartável e fica nas sugestões de todo mundo. O
+`ui:smoke` apaga o que criou, e agora avisa quando não consegue — a primeira
+versão falhava em silêncio e deixou duas sobras no catálogo antes de alguém
+notar.
+
+O teste usa dois ingredientes de propósito: um inventado, que prova a criação,
+e um que já existe, que prova o reaproveitamento — o catálogo cresce um, não
+dois.
+
 ---
 
 ## Estrutura

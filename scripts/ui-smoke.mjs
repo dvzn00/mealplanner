@@ -70,6 +70,7 @@ const email = `ui-${randomUUID()}@example.com`;
 const senha = randomUUID();
 let userId;
 let navegador;
+let ingredienteInventado;
 
 try {
   const { data, error } = await supabase.auth.admin.createUser({
@@ -322,6 +323,143 @@ try {
     `${emMinhasReceitas} receitas, etiqueta ${temEtiqueta}`,
   );
 
+  // --- receita própria: criar, usar e apagar ---
+  const nomeDaReceita = `Panqueca de teste ${randomUUID().slice(0, 6)}`;
+  ingredienteInventado = `Farinha de teff ${randomUUID().slice(0, 6)}`;
+
+  await pagina.goto(`${BASE}/receitas`, { waitUntil: "networkidle" });
+  await pagina.getByRole("link", { name: "Nova receita" }).first().click();
+  await pagina.waitForURL("**/receitas/nova", { timeout: 20000 });
+
+  await pagina.getByLabel("Nome", { exact: true }).fill(nomeDaReceita);
+  await pagina
+    .getByLabel("Modo de preparo")
+    .fill("Misture tudo e leve à frigideira em fogo médio.");
+  await pagina.getByLabel("Tempo (min)").fill("15");
+  await pagina.getByLabel("Porções").fill("2");
+  await pagina.getByLabel("Calorias").fill("320");
+
+  await pagina.getByLabel("Ingrediente", { exact: true }).first().fill(ingredienteInventado);
+  await pagina.getByLabel("Quantidade").first().fill("60");
+  await pagina.getByLabel("Unidade").first().fill("g");
+
+  // Segunda linha com um ingrediente que já existe: exercita o botão de
+  // acrescentar e prova que o catálogo é reaproveitado em vez de duplicado.
+  const { count: antesDoCatalogo } = await supabase
+    .from("ingredients")
+    .select("id", { count: "exact", head: true });
+
+  await pagina.getByRole("button", { name: "Adicionar ingrediente" }).click();
+  await pagina.getByLabel("Ingrediente", { exact: true }).nth(1).fill("Sal");
+  await pagina.getByLabel("Quantidade").nth(1).fill("1");
+  await pagina.getByLabel("Unidade").nth(1).fill("pitada");
+
+  await pagina.getByRole("button", { name: "Salvar receita" }).click();
+  await pagina.waitForURL("**/receitas", { timeout: 20000 });
+
+  const { data: criada } = await supabase
+    .from("recipes")
+    .select("id, calorias, porcoes, recipe_ingredients(quantidade, unidade)")
+    .eq("user_id", userId)
+    .eq("nome", nomeDaReceita)
+    .maybeSingle();
+
+  conferir(
+    "a receita própria é salva com os campos informados",
+    criada?.calorias === 320 && criada?.porcoes === 2,
+    `${criada?.calorias} kcal, ${criada?.porcoes} porções`,
+  );
+  conferir(
+    "com os dois ingredientes",
+    criada?.recipe_ingredients?.length === 2,
+    `${criada?.recipe_ingredients?.length ?? 0} ingrediente(s)`,
+  );
+
+  const { data: ingredienteNovo } = await supabase
+    .from("ingredients")
+    .select("id, unidade_padrao")
+    .eq("nome", ingredienteInventado)
+    .maybeSingle();
+
+  conferir(
+    "o ingrediente que não existia entra no catálogo",
+    ingredienteNovo?.unidade_padrao === "g",
+    ingredienteNovo?.unidade_padrao ?? "ausente",
+  );
+
+  const { count: depoisDoCatalogo } = await supabase
+    .from("ingredients")
+    .select("id", { count: "exact", head: true });
+
+  conferir(
+    "o que já existia é reaproveitado, não duplicado",
+    (depoisDoCatalogo ?? 0) === (antesDoCatalogo ?? 0) + 1,
+    `catálogo foi de ${antesDoCatalogo} para ${depoisDoCatalogo}`,
+  );
+
+  const marcadaComoSua = await pagina
+    .getByRole("article")
+    .filter({ hasText: nomeDaReceita })
+    .getByText("Sua receita")
+    .isVisible()
+    .catch(() => false);
+  conferir("aparece em Minhas receitas como sua", marcadaComoSua, marcadaComoSua);
+
+  // --- usar a receita nova no planejamento ---
+  await pagina.goto(`${BASE}/dashboard`, { waitUntil: "networkidle" });
+  const noPainel = await pagina
+    .getByRole("button", { name: new RegExp(`Arrastar ${nomeDaReceita}`) })
+    .isVisible()
+    .catch(() => false);
+  conferir("e pode ser arrastada da paleta", noPainel, noPainel);
+
+  const { data: slotVazio } = await supabase
+    .from("plan_slots")
+    .select("id, plan_id")
+    .is("recipe_id", null)
+    .limit(1)
+    .maybeSingle();
+
+  if (slotVazio && criada) {
+    await supabase
+      .from("plan_slots")
+      .update({ recipe_id: criada.id })
+      .eq("id", slotVazio.id);
+    await pagina.waitForTimeout(800);
+
+    const { data: naLista } = await supabase
+      .from("shopping_list")
+      .select("quantidade_total, unidade")
+      .eq("plan_id", slotVazio.plan_id)
+      .eq("ingredient_id", ingredienteNovo?.id ?? "")
+      .maybeSingle();
+
+    conferir(
+      "o ingrediente novo entra na lista de compras somado",
+      Number(naLista?.quantidade_total) === 60 && naLista?.unidade === "g",
+      `${naLista?.quantidade_total} ${naLista?.unidade}`,
+    );
+  }
+
+  // --- apagar a receita própria ---
+  await pagina.goto(`${BASE}/receitas`, { waitUntil: "networkidle" });
+  await pagina
+    .getByRole("button", { name: `Apagar a receita ${nomeDaReceita}` })
+    .click();
+  await pagina
+    .getByRole("alertdialog")
+    .getByRole("button", { name: "Apagar", exact: true })
+    .click();
+  await pagina.waitForTimeout(2000);
+
+  const { count: sobraram } = await supabase
+    .from("recipes")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", userId)
+    .eq("nome", nomeDaReceita);
+
+  conferir("apagar a receita própria funciona", sobraram === 0, sobraram);
+
   // --- navegação por teclado ---
   await pagina.goto(`${BASE}/dashboard`, { waitUntil: "networkidle" });
   await pagina.keyboard.press("Tab");
@@ -347,6 +485,21 @@ try {
   if (userId) {
     await supabase.auth.admin.deleteUser(userId);
     console.log("\nusuário de teste apagado");
+  }
+  // O catálogo de ingredientes é compartilhado e não pertence a ninguém: o
+  // ingrediente inventado sobreviveria ao usuário de teste e ficaria sujando
+  // as sugestões de todo mundo.
+  if (ingredienteInventado) {
+    const { error } = await supabase
+      .from("ingredients")
+      .delete()
+      .eq("nome", ingredienteInventado);
+
+    console.log(
+      error
+        ? `ingrediente de teste NÃO foi apagado: ${error.message}`
+        : "ingrediente de teste apagado",
+    );
   }
 }
 
