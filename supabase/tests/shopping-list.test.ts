@@ -234,6 +234,54 @@ describe("generate_shopping_list", () => {
   });
 });
 
+describe("obter_ou_criar_ingrediente", () => {
+  it("cria o ingrediente que ainda não existe", async () => {
+    const { rows } = await db.query<{ id: string }>(
+      "select public.obter_ou_criar_ingrediente('Farinha de trigo', 'g') as id",
+    );
+
+    const { rows: catalogo } = await db.query<{ nome: string }>(
+      "select nome from public.ingredients where id = $1",
+      [rows[0].id],
+    );
+
+    expect(catalogo[0]?.nome).toBe("Farinha de trigo");
+  });
+
+  it("devolve o mesmo id na segunda chamada", async () => {
+    const primeira = await db.query<{ id: string }>(
+      "select public.obter_ou_criar_ingrediente('Azeite', 'ml') as id",
+    );
+    const segunda = await db.query<{ id: string }>(
+      "select public.obter_ou_criar_ingrediente('Azeite', 'ml') as id",
+    );
+
+    expect(segunda.rows[0].id).toBe(primeira.rows[0].id);
+  });
+
+  it("não duplica por causa de caixa ou espaço", async () => {
+    const primeira = await db.query<{ id: string }>(
+      "select public.obter_ou_criar_ingrediente('Sal grosso', 'g') as id",
+    );
+    const segunda = await db.query<{ id: string }>(
+      "select public.obter_ou_criar_ingrediente('  SAL GROSSO ', 'kg') as id",
+    );
+
+    expect(segunda.rows[0].id).toBe(primeira.rows[0].id);
+
+    const { rows } = await db.query<{ c: number }>(
+      "select count(*)::int as c from public.ingredients",
+    );
+    expect(rows[0].c).toBe(1);
+  });
+
+  it("recusa nome ou unidade em branco", async () => {
+    await expect(
+      db.query("select public.obter_ou_criar_ingrediente('  ', 'g')"),
+    ).rejects.toThrow(/nome e unidade/);
+  });
+});
+
 describe("cadastro de usuário", () => {
   it("cria o perfil com o nome vindo do metadata do Auth", async () => {
     const { rows } = await db.query<{ nome: string }>(

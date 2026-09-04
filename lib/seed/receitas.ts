@@ -1,4 +1,8 @@
 import { z } from "zod";
+import {
+  chaveDoIngrediente,
+  consolidarIngredientes as consolidar,
+} from "@/lib/ingredientes";
 
 /**
  * Formato do `receitas-seed.json` e as transformações puras que o script de
@@ -29,18 +33,10 @@ export const receitasSeedSchema = z
   .array(receitaSeedSchema)
   .min(1, "o arquivo não tem nenhuma receita");
 
+export { chaveDoIngrediente };
+
 export type IngredienteSeed = z.infer<typeof ingredienteSeedSchema>;
 export type ReceitaSeed = z.infer<typeof receitaSeedSchema>;
-
-/**
- * Chave de comparação de ingredientes. É `lower(nome)` de propósito: é
- * exatamente o índice único que existe na tabela `ingredients`. Normalizar
- * mais que o banco (tirando acento, por exemplo) faria o script juntar dois
- * ingredientes que o banco considera diferentes.
- */
-export function chaveDoIngrediente(nome: string): string {
-  return nome.trim().toLowerCase();
-}
 
 export interface IngredienteDoCatalogo {
   nome: string;
@@ -74,50 +70,7 @@ export function catalogoDeIngredientes(
   return [...porChave.values()];
 }
 
-export interface IngredienteConsolidado {
-  chave: string;
-  nome: string;
-  quantidade: number;
-  unidade: string;
-}
-
-/**
- * Os ingredientes de uma receita, com repetições resolvidas.
- *
- * `recipe_ingredients` tem UNIQUE(recipe_id, ingredient_id), então a mesma
- * receita não pode listar o mesmo ingrediente duas vezes. Quantidades na mesma
- * unidade são somadas. Unidades diferentes levantam erro em vez de conversão
- * às cegas: converter errado estraga a lista de compras em silêncio.
- */
-export function consolidarIngredientes(
-  receita: ReceitaSeed,
-): IngredienteConsolidado[] {
-  const porChave = new Map<string, IngredienteConsolidado>();
-
-  for (const ingrediente of receita.ingredientes) {
-    const chave = chaveDoIngrediente(ingrediente.nome);
-    const unidade = ingrediente.unidade.trim();
-    const existente = porChave.get(chave);
-
-    if (!existente) {
-      porChave.set(chave, {
-        chave,
-        nome: ingrediente.nome.trim(),
-        quantidade: ingrediente.quantidade,
-        unidade,
-      });
-      continue;
-    }
-
-    if (existente.unidade !== unidade) {
-      throw new Error(
-        `Receita "${receita.nome}": "${existente.nome}" aparece em ${existente.unidade} e em ${unidade}. ` +
-          "Escolha uma unidade para os dois — o seed não converte por conta própria.",
-      );
-    }
-
-    existente.quantidade += ingrediente.quantidade;
-  }
-
-  return [...porChave.values()];
+/** Os ingredientes de uma receita do seed, com repetições resolvidas. */
+export function consolidarIngredientes(receita: ReceitaSeed) {
+  return consolidar(receita.ingredientes, `Receita "${receita.nome}"`);
 }

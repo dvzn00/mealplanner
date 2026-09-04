@@ -47,3 +47,12 @@ export function formatarQuantidade(valor: number): string {
 export function formatarMedida(quantidade: number, unidade: string): string {
   return `${formatarQuantidade(quantidade)} ${flexionarUnidade(quantidade, unidade)}`;
 }
+
+/** O que aparece na lista de sugestões do campo de unidade. */
+export const UNIDADES_SUGERIDAS: readonly string[] = [
+  "g",
+  "kg",
+  "ml",
+  "l",
+  ...PARES.map((par) => par[1]),
+];

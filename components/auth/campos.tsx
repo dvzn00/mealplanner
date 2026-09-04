@@ -4,6 +4,7 @@ import { Eye, EyeOff } from "lucide-react";
 import { useId, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 
 type CampoProps = Omit<React.ComponentProps<"input">, "id"> & {
   rotulo: string;
@@ -23,6 +24,41 @@ export function CampoDeTexto({ rotulo, erro, ...props }: CampoProps) {
         aria-describedby={erro ? idDoErro : undefined}
         {...props}
       />
+      <MensagemDeErro id={idDoErro} mensagem={erro} />
+    </div>
+  );
+}
+
+type CampoLongoProps = Omit<React.ComponentProps<"textarea">, "id"> & {
+  rotulo: string;
+  erro?: string;
+  dica?: string;
+};
+
+export function CampoDeTextoLongo({
+  rotulo,
+  erro,
+  dica,
+  ...props
+}: CampoLongoProps) {
+  const id = useId();
+  const idDoErro = `${id}-erro`;
+  const idDaDica = `${id}-dica`;
+
+  return (
+    <div className="grid gap-2">
+      <Label htmlFor={id}>{rotulo}</Label>
+      <Textarea
+        id={id}
+        aria-invalid={erro ? true : undefined}
+        aria-describedby={erro ? idDoErro : dica ? idDaDica : undefined}
+        {...props}
+      />
+      {dica && !erro && (
+        <p id={idDaDica} className="px-4 text-sm text-text-muted">
+          {dica}
+        </p>
+      )}
       <MensagemDeErro id={idDoErro} mensagem={erro} />
     </div>
   );

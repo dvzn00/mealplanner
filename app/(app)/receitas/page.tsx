@@ -1,6 +1,8 @@
-import { BookOpen } from "lucide-react";
+import { BookOpen, Plus } from "lucide-react";
 import type { Metadata } from "next";
+import Link from "next/link";
 import { redirect } from "next/navigation";
+import { Button } from "@/components/ui/button";
 import { CabecalhoDePagina } from "@/components/cabecalho-de-pagina";
 import { EstadoVazio } from "@/components/estado-vazio";
 import { CartaoDeReceita } from "@/components/receitas/cartao-de-receita";
@@ -28,6 +30,14 @@ export default async function PaginaDeReceitas() {
               : `${receitas.length} receitas do catálogo, prontas para entrar na sua semana.`
             : "As receitas que você pode arrastar para a semana aparecem aqui."
         }
+        acao={
+          <Button asChild>
+            <Link href="/receitas/nova">
+              <Plus strokeWidth={2} aria-hidden="true" />
+              Nova receita
+            </Link>
+          </Button>
+        }
       />
 
       {receitas.length === 0 ? (
@@ -35,7 +45,15 @@ export default async function PaginaDeReceitas() {
           tom="lilas"
           icone={BookOpen}
           titulo="Nenhuma receita ainda"
-          descricao="Assim que o catálogo for semeado, as receitas aparecem aqui prontas para entrar na sua semana."
+          descricao="Crie a sua primeira, ou importe uma sugestão do catálogo."
+          acao={
+            <Button asChild>
+              <Link href="/receitas/nova">
+                <Plus strokeWidth={2} aria-hidden="true" />
+                Nova receita
+              </Link>
+            </Button>
+          }
         />
       ) : (
         <ul className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">

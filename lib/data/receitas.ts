@@ -94,3 +94,21 @@ export async function listarReceitasParaArrastar(): Promise<ReceitaDoSlot[]> {
 
   return visiveis.map(({ user_id, ...receita }) => receita);
 }
+
+/**
+ * Os nomes do catálogo, para a lista de sugestões do formulário.
+ *
+ * Sugerir o que já existe é o que mantém a lista de compras somando certo:
+ * quem escolhe "Azeite de oliva" da lista cai no mesmo `ingredient_id` que
+ * as receitas do catálogo usam.
+ */
+export async function listarNomesDeIngredientes(): Promise<string[]> {
+  const supabase = await createClient();
+
+  const { data } = await supabase
+    .from("ingredients")
+    .select("nome")
+    .order("nome");
+
+  return (data ?? []).map((ingrediente) => ingrediente.nome);
+}

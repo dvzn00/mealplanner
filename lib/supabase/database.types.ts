@@ -234,6 +234,10 @@ export type Database = {
         Args: { p_plan_id: string };
         Returns: undefined;
       };
+      obter_ou_criar_ingrediente: {
+        Args: { p_nome: string; p_unidade: string };
+        Returns: string;
+      };
     };
     Enums: Record<never, never>;
     CompositeTypes: Record<never, never>;
