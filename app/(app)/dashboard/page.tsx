@@ -16,7 +16,7 @@ import { listarReceitasParaArrastar } from "@/lib/data/receitas";
 import { diaDeHoje, segundaDaSemanaAtual } from "@/lib/semana";
 import { ROTA_LOGIN } from "@/lib/supabase/routes";
 
-export const metadata: Metadata = { title: "Programação da semana" };
+export const metadata: Metadata = { title: "Minha semana" };
 
 /** `?semana=` vem da URL, então pode vir qualquer coisa. */
 function semanaPedida(valor: string | string[] | undefined): string {
@@ -50,7 +50,7 @@ export default async function PaginaDoPlanejamento({
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold text-text-dark sm:text-3xl">
-            Programação da semana
+            Minha semana
           </h1>
           <p className="mt-1.5 text-sm text-text-muted">
             Sete dias, os horários que você quiser, e a lista de compras se

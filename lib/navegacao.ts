@@ -16,7 +16,7 @@ export interface ItemDeMenu {
 
 /** A navegação do produto, na ordem em que aparece na barra lateral. */
 export const MENU: readonly ItemDeMenu[] = [
-  { href: "/dashboard", rotulo: "Programação da semana", icone: CalendarDays },
+  { href: "/dashboard", rotulo: "Minha semana", icone: CalendarDays },
   { href: "/receitas", rotulo: "Minhas receitas", icone: BookOpen },
   { href: "/lista-compras", rotulo: "Lista de compras", icone: ShoppingBasket },
   { href: "/sugestoes", rotulo: "Sugestões", icone: Sparkles },
