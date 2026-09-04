@@ -121,6 +121,42 @@ try {
     console.log(`  ${largura}px capturado`);
   }
 
+  // --- passada no tema escuro ---
+  // Só em 1440: o que muda no escuro é cor, não layout, e as quebras já foram
+  // medidas nas quatro larguras acima.
+  const noEscuro = await navegador.newContext({
+    viewport: { width: 1440, height: 1000 },
+    locale: "pt-BR",
+    colorScheme: "dark",
+  });
+  await noEscuro.addInitScript(() => {
+    try {
+      localStorage.setItem("theme", "dark");
+    } catch {
+      // armazenamento bloqueado; a preferência do sistema já cobre
+    }
+  });
+
+  const paginaEscura = await noEscuro.newPage();
+  await paginaEscura.goto(`${BASE}/login`, { waitUntil: "networkidle" });
+  await paginaEscura.screenshot({ path: `${SAIDA}/escuro-login.png` });
+
+  await paginaEscura.getByLabel("E-mail").fill(email);
+  await paginaEscura.getByLabel("Senha", { exact: true }).fill(senha);
+  await paginaEscura.getByRole("button", { name: "Entrar" }).click();
+  await paginaEscura.waitForURL("**/dashboard", { timeout: 20000 });
+
+  for (const rota of ["/dashboard", "/lista-compras", "/receitas", "/sugestoes"]) {
+    await paginaEscura.goto(`${BASE}${rota}`, { waitUntil: "networkidle" });
+    await paginaEscura.screenshot({
+      path: `${SAIDA}/escuro${rota.replaceAll("/", "-")}.png`,
+      fullPage: true,
+    });
+  }
+
+  await noEscuro.close();
+  console.log("  tema escuro capturado");
+
   await navegador.close();
 } finally {
   if (userId) {

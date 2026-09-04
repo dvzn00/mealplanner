@@ -2,6 +2,10 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
+/* Os componentes do shadcn trazem utilitários `dark:` próprios; esta variante
+   é o que faz a classe `dark` no <html> alcançá-los. */
+@custom-variant dark (&:is(.dark *));
+
 /*
   Meal Planner — camada de design.
   Fonte única de verdade das cores. Nenhum HEX deve ser escrito
@@ -50,6 +54,7 @@
   --color-text-dark: var(--text-dark);
   --color-text-gray: var(--text-gray);
   --color-text-muted: var(--text-muted);
+  --color-canvas-marca: var(--canvas-marca);
   --color-green-light: var(--primary-soft);
   --color-pink-light: var(--secondary-soft);
 
@@ -144,8 +149,86 @@
   --sidebar-border: #e7eae8;
   --sidebar-ring: #5dbb63;
 
+  /* A tela de entrada: verde da marca no claro, verde de fim de tarde no
+     escuro. Um verde vivo em tela cheia à noite é agressivo. */
+  --canvas-marca: #5dbb63;
+
   --radius: 1rem;
   --font-mono: ui-monospace, "SFMono-Regular", "Menlo", "Consolas", monospace;
+}
+
+/*
+  Tema escuro.
+  
+  Não é o claro invertido. Três coisas mudam de papel:
+
+  1. O fundo é um carvão puxado para o verde, não preto — a marca continua
+     reconhecível, e preto puro sobre tela iluminada cansa a vista.
+  2. Os degraus da paleta trocam de lado. No claro, `-strong` é um verde
+     escuro que segura texto branco; no escuro, é um verde claro que segura
+     texto escuro. `-deep`, que era o tom de texto sobre fundo claro, vira o
+     tom de texto sobre fundo escuro.
+  3. `-soft`, que era um verde quase branco, vira um verde quase preto.
+
+  Os nomes vêm da tabela do briefing e descrevem a aparência no claro. Aqui
+  eles são papéis, não cores: `--text-dark` quer dizer "texto principal".
+*/
+:root.dark {
+  color-scheme: dark;
+
+  --primary: #5dbb63;
+  --primary-foreground: #0f1f0e;
+  --primary-strong: #7ccb82;
+  --primary-deep: #93d999;
+  --primary-soft: #1e2b21;
+
+  --secondary: #f76c6c;
+  --secondary-foreground: #2a0f0f;
+  --secondary-strong: #ef9090;
+  --secondary-deep: #f4a8a8;
+  --secondary-soft: #2f1d1d;
+
+  --tertiary: #b39ddb;
+  --tertiary-foreground: #191124;
+  --tertiary-strong: #c2adea;
+  --tertiary-deep: #cdbaf0;
+  --tertiary-soft: #251f32;
+
+  /* A escada de elevação sobe clareando: fundo, base de coluna, cartão,
+     balão flutuante. No claro é o contrário — o cartão branco é o mais claro
+     e o cinza de apoio é que escurece. Trocar a ordem faz o cartão parecer
+     afundado dentro da coluna. */
+  --gray-light: #171c18;
+  --gray-light-2: #1a201b;
+  --text-dark: #e9efea;
+  --text-gray: #838d85;
+  --text-muted: #a9b3ab;
+
+  --background: #131714;
+  --foreground: #e9efea;
+  --card: #232b24;
+  --card-foreground: #e9efea;
+  --popover: #283128;
+  --popover-foreground: #e9efea;
+  --muted: #1a201b;
+  --muted-foreground: #a9b3ab;
+  --accent: #1e2b21;
+  --accent-foreground: #93d999;
+  --destructive: #f4a8a8;
+  --border: #2c342d;
+  --input: #3a433b;
+  --ring: #5dbb63;
+
+  --canvas-marca: #16251a;
+
+  --sidebar: #1a201b;
+  --sidebar-foreground: #e9efea;
+  --sidebar-primary: #7ccb82;
+  --sidebar-primary-foreground: #0f1f0e;
+  --sidebar-accent: #1e2b21;
+  --sidebar-accent-foreground: #93d999;
+  --sidebar-border: #2c342d;
+  --sidebar-ring: #5dbb63;
 }
 
 @layer base {
@@ -156,6 +239,7 @@
   html {
     @apply font-sans;
     -webkit-text-size-adjust: 100%;
+    color-scheme: light;
   }
 
   body {

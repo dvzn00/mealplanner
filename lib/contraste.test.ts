@@ -8,69 +8,114 @@ import { contraste } from "./contraste";
 /**
  * A paleta é lida do CSS, não copiada para cá: trocar um token em
  * `app/globals.css` tem que quebrar este teste, não passar despercebido.
+ *
+ * Os dois temas passam pelas mesmas afirmações. É por isso que os pares são
+ * escritos com os nomes semânticos — `primary-strong` × `primary-foreground`,
+ * e não "verde escuro × branco". No tema escuro os papéis trocam de cor, mas
+ * continuam sendo os mesmos papéis.
  */
 const css = readFileSync(
   join(fileURLToPath(new URL(".", import.meta.url)), "..", "app", "globals.css"),
   "utf8",
 );
 
-function token(nome: string): string {
-  const encontrado = css.match(
-    new RegExp(`^\\s*--${nome}:\\s*(#[0-9a-fA-F]{3,8})`, "m"),
-  );
+function lerBloco(seletor: string): Map<string, string> {
+  const inicio = css.indexOf(`${seletor} {`);
+  if (inicio < 0) throw new Error(`bloco ${seletor} não encontrado`);
 
-  if (!encontrado) throw new Error(`token --${nome} não encontrado`);
-  return encontrado[1];
+  const fim = css.indexOf("\n}", inicio);
+  const corpo = css.slice(inicio, fim);
+  const tokens = new Map<string, string>();
+
+  for (const linha of corpo.matchAll(
+    /^\s*--([a-z0-9-]+):\s*(#[0-9a-fA-F]{3,8})/gm,
+  )) {
+    tokens.set(linha[1], linha[2]);
+  }
+
+  return tokens;
 }
+
+const TEMAS = {
+  claro: lerBloco(":root"),
+  escuro: lerBloco(":root.dark"),
+};
 
 const AA_TEXTO = 4.5;
 const AA_INTERFACE = 3;
 
-/** Texto corrido: fundo × cor do texto. */
+/** Texto corrido: [descrição, token do fundo, token do texto]. */
 const TEXTO: [string, string, string][] = [
-  ["texto principal sobre o cartão branco", "card", "text-dark"],
-  ["texto principal sobre o fundo da aplicação", "background", "text-dark"],
-  ["texto principal sobre o verde da marca", "primary", "text-dark"],
-  ["texto auxiliar sobre o cartão branco", "card", "text-muted"],
-  ["texto auxiliar sobre o fundo da aplicação", "background", "text-muted"],
-  ["botão primário: branco sobre o verde forte", "primary-strong", "card"],
-  ["botão secundário: branco sobre o coral forte", "secondary-strong", "card"],
-  ["botão terciário: branco sobre o lilás forte", "tertiary-strong", "card"],
-  ["link verde sobre branco", "card", "primary-deep"],
-  ["texto verde sobre o verde claro", "primary-soft", "primary-deep"],
-  ["texto coral sobre branco", "card", "secondary-deep"],
-  ["texto coral sobre o rosa bebê", "secondary-soft", "secondary-deep"],
-  ["texto lilás sobre branco", "card", "tertiary-deep"],
-  ["texto lilás sobre o lilás claro", "tertiary-soft", "tertiary-deep"],
+  ["texto principal no cartão", "card", "text-dark"],
+  ["texto principal no fundo da aplicação", "background", "text-dark"],
+  ["texto auxiliar no cartão", "card", "text-muted"],
+  ["texto auxiliar no fundo da aplicação", "background", "text-muted"],
+  ["texto no balão flutuante", "popover", "popover-foreground"],
+  ["texto sobre o cinza de apoio", "muted", "muted-foreground"],
+  ["botão primário", "primary-strong", "primary-foreground"],
+  ["botão secundário", "secondary-strong", "secondary-foreground"],
+  ["botão terciário", "tertiary-strong", "tertiary-foreground"],
+  ["link verde no cartão", "card", "primary-deep"],
+  ["texto verde no verde suave", "primary-soft", "primary-deep"],
+  ["texto coral no cartão", "card", "secondary-deep"],
+  ["texto coral no coral suave", "secondary-soft", "secondary-deep"],
+  ["texto lilás no cartão", "card", "tertiary-deep"],
+  ["texto lilás no lilás suave", "tertiary-soft", "tertiary-deep"],
   ["item ativo do menu", "accent", "accent-foreground"],
 ];
 
-/** Elementos de interface: bordas, anéis, indicadores. */
+/** Bordas, anéis e indicadores: [descrição, fundo, elemento]. */
 const INTERFACE: [string, string, string][] = [
-  ["contorno de foco sobre o cartão", "card", "primary-strong"],
-  ["contorno de foco sobre o fundo da aplicação", "background", "primary-strong"],
-  ["marcador de hoje sobre o cartão", "card", "secondary-strong"],
+  ["contorno de foco no cartão", "card", "primary-strong"],
+  ["contorno de foco no fundo da aplicação", "background", "primary-strong"],
+  ["marcador de hoje no cartão", "card", "secondary-strong"],
 ];
 
-describe("contraste da paleta", () => {
-  it.each(TEXTO)("%s passa em AA para texto", (_descricao, fundo, frente) => {
-    expect(contraste(token(fundo), token(frente))).toBeGreaterThanOrEqual(
+function cor(tema: keyof typeof TEMAS, token: string): string {
+  const valor = TEMAS[tema].get(token);
+  if (!valor) throw new Error(`token --${token} ausente no tema ${tema}`);
+  return valor;
+}
+
+describe.each(Object.keys(TEMAS) as (keyof typeof TEMAS)[])(
+  "contraste da paleta — tema %s",
+  (tema) => {
+    it.each(TEXTO)("%s passa em AA para texto", (_d, fundo, frente) => {
+      expect(contraste(cor(tema, fundo), cor(tema, frente))).toBeGreaterThanOrEqual(
+        AA_TEXTO,
+      );
+    });
+
+    it.each(INTERFACE)("%s passa em AA para interface", (_d, fundo, frente) => {
+      expect(contraste(cor(tema, fundo), cor(tema, frente))).toBeGreaterThanOrEqual(
+        AA_INTERFACE,
+      );
+    });
+  },
+);
+
+describe("as cores base do briefing", () => {
+  it("reprovam com texto branco, e é por isso que existem -strong e -deep", () => {
+    // Se algum dia alguém apontar texto branco para a cor base, esta é a
+    // explicação de por que a interface não faz isso em lugar nenhum.
+    expect(contraste(cor("claro", "primary"), "#ffffff")).toBeLessThan(AA_TEXTO);
+    expect(contraste(cor("claro", "secondary"), "#ffffff")).toBeLessThan(
+      AA_TEXTO,
+    );
+    expect(contraste(cor("claro", "tertiary"), "#ffffff")).toBeLessThan(
       AA_TEXTO,
     );
   });
 
-  it.each(INTERFACE)("%s passa em AA para interface", (_d, fundo, frente) => {
-    expect(contraste(token(fundo), token(frente))).toBeGreaterThanOrEqual(
-      AA_INTERFACE,
+  it("a marca sobre o verde da entrada fica numa pastilha por causa disso", () => {
+    // O nome "Meal Planner" em branco direto no verde daria 2.4:1. A pastilha
+    // de `bg-card` põe o texto sobre o cartão, que passa.
+    expect(contraste(cor("claro", "canvas-marca"), "#ffffff")).toBeLessThan(
+      AA_TEXTO,
     );
-  });
-
-  it("registra que as cores base do briefing reprovam com texto branco", () => {
-    // É por isso que existem as variantes -strong e -deep. Se algum dia
-    // alguém apontar texto branco para a cor base, esta é a explicação.
-    expect(contraste(token("primary"), "#ffffff")).toBeLessThan(AA_TEXTO);
-    expect(contraste(token("secondary"), "#ffffff")).toBeLessThan(AA_TEXTO);
-    expect(contraste(token("tertiary"), "#ffffff")).toBeLessThan(AA_TEXTO);
+    expect(
+      contraste(cor("claro", "card"), cor("claro", "text-dark")),
+    ).toBeGreaterThanOrEqual(AA_TEXTO);
   });
 });
 

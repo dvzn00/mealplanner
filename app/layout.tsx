@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Poppins } from "next/font/google";
+import { ProvedorDeTema } from "@/components/tema";
 import "./globals.css";
 
 const poppins = Poppins({
@@ -19,13 +20,26 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#5dbb63",
+  // A barra do navegador no celular também segue o tema — verde da marca no
+  // claro, o mesmo fundo da aplicação no escuro.
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#5dbb63" },
+    { media: "(prefers-color-scheme: dark)", color: "#131714" },
+  ],
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="pt-BR" className={`${poppins.variable} h-full`}>
-      <body className="min-h-full flex flex-col">{children}</body>
+    // `suppressHydrationWarning` porque o script do tema escreve a classe no
+    // <html> antes da hidratação: a divergência é intencional.
+    <html
+      lang="pt-BR"
+      className={`${poppins.variable} h-full`}
+      suppressHydrationWarning
+    >
+      <body className="min-h-full flex flex-col">
+        <ProvedorDeTema>{children}</ProvedorDeTema>
+      </body>
     </html>
   );
 }

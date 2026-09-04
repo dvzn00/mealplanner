@@ -137,12 +137,16 @@ a variante `-strong`; a cor base do briefing continua nos fundos de card, nos
 ícones, nas superfícies grandes e em qualquer lugar sem texto claro por cima.
 A identidade fica de pé e o contraste passa.
 
-### 6. Tema claro único
+### 6. Tema claro único — revertida
 
-O briefing descreve um produto claro e ensolarado, sem menção a modo escuro. O
-bloco `.dark` que a CLI gera foi removido em vez de ficar com um tema escuro
-não projetado e nunca ativado. Se o modo escuro entrar depois, ele volta como
-redefinição das mesmas variáveis em `:root.dark`.
+O briefing descrevia um produto claro e ensolarado, sem menção a modo escuro, e
+o bloco `.dark` que a CLI gera foi removido em vez de ficar com um tema escuro
+não projetado e nunca ativado. Na época a decisão registrou como ele voltaria:
+"redefinição das mesmas variáveis em `:root.dark`". Foi exatamente assim que
+voltou — veja as decisões 73 a 76.
+
+O que sobrou dela: nenhum componente ganhou variante `dark:` própria. O tema
+todo mora no CSS.
 
 ### 7. Zod na linha 3.x
 
@@ -981,6 +985,70 @@ O terceiro ignora RLS — use só quando não houver outro caminho.
 - **Senha e token não vão para log nem para `localStorage`.**
 - **RLS ligada em todas as tabelas** — o cliente nunca é a fronteira de segurança.
 
+### 73. O tema escuro é projetado, não invertido
+
+Inverter luminosidade produz um verde fluorescente e um coral que vibra. O
+bloco `:root.dark` redefine os mesmos tokens com valores escolhidos: as cores
+base da marca ficam praticamente onde estavam — elas já eram claras o bastante
+para virar texto sobre fundo escuro — e são as variantes que trocam de sentido.
+No claro, `-strong` e `-deep` escurecem a cor base para ela passar em AA sobre
+branco; no escuro, elas a clareiam pelo mesmo motivo, agora sobre preto.
+
+`--primary-soft`, que no claro é o `#E8F5E9` do briefing, vira um verde de
+baixa luminosidade (`#1E2B21`): continua sendo "a superfície tingida de verde",
+que é o papel que o token nomeia.
+
+### 74. A escada de elevação sobe em direções opostas nos dois temas
+
+No claro, o cartão é branco e a superfície de apoio é cinza — o que está por
+cima é mais claro. No escuro isso se inverte: o fundo é o mais escuro e cada
+nível de elevação clareia (`background` → `gray-light-2` → `card` → `popover`).
+
+Isso não é decoração. A primeira paleta escura deste bloco tinha
+`--gray-light-2` mais claro que `--card`, e o resultado foi um cartão de
+refeição que parecia afundado dentro da coluna do dia. Nenhum teste pegou —
+todos os pares de contraste passavam. Foi a captura de tela que mostrou.
+
+### 75. `next-themes` existe por causa do primeiro quadro
+
+A troca de tema em si é uma classe no `<html>`; escrever isso à mão são cinco
+linhas. O que não é curto é evitar o flash: sem um script que leia a escolha
+antes da primeira pintura, a página aparece clara e pisca para o escuro. Some a
+isso armazenamento bloqueado, sincronia entre abas e mudança da preferência do
+sistema com a página aberta.
+
+O `<html>` leva `suppressHydrationWarning` porque esse script escreve a classe
+antes da hidratação: a divergência é intencional e está confinada a um atributo.
+
+### 76. O botão de tema troca de rótulo por CSS, não por estado
+
+O servidor não sabe qual tema o navegador vai escolher, então ler
+`resolvedTheme` durante a renderização é divergência de hidratação garantida. A
+saída comum — esconder o botão até a página montar — é pior: um controle que
+aparece depois é um controle que some antes.
+
+Os dois ícones e os dois textos de leitor de tela ficam no DOM, e a variante
+`dark:` mostra um par de cada vez. O nome acessível troca junto com o ícone,
+sem `aria-label` fixo mentindo sobre o que o botão faz.
+
+### 77. O PDF continua claro
+
+Papel é branco. O documento de `@react-pdf` é o único lugar do projeto onde as
+cores são literais em vez de tokens, e é de propósito — imprimir o tema escuro
+gastaria a impressora do usuário para entregar um resultado pior.
+
+### 78. O teste de contraste roda os dois temas nos mesmos pares
+
+`lib/contraste.test.ts` lê `:root` e `:root.dark` direto do `globals.css` e
+aplica a mesma lista de pares aos dois. É por isso que os pares estão escritos
+com nomes semânticos — `primary-strong` × `primary-foreground`, e não "verde
+escuro × branco". No escuro os papéis trocam de cor e continuam sendo os mesmos
+papéis. São 42 afirmações.
+
+Ele também pegou uma falha que existia desde o Bloco 1 e não tinha nada a ver
+com o tema escuro: a marca "Meal Planner" em branco sobre o verde `#5DBB63` da
+tela de entrada dava 2,4:1. A marca passou a morar numa pastilha de `bg-card`.
+
 ## Comandos
 
 | Comando             | O que faz                                  |
@@ -995,7 +1063,7 @@ O terceiro ignora RLS — use só quando não houver outro caminho.
 | `npm run db:check`  | confere o schema aplicado no projeto       |
 | `npm run db:seed`   | popula o catálogo global de receitas       |
 | `npm run db:smoke`  | testa o cadastro de ponta a ponta          |
-| `npm run screenshots` | fotografa as telas em quatro larguras    |
+| `npm run screenshots` | fotografa as telas em quatro larguras e no tema escuro |
 | `npm run ui:smoke`  | percorre os fluxos em um navegador real    |
 | `npm run ui:plano`  | exercita a grade semanal em um navegador   |
 | `npm run pdf:preview` | gera o PDF e o rasteriza para conferência |

@@ -164,7 +164,7 @@ export function DialogoDeSlot({
                 id="receita-do-slot"
                 value={receitaId}
                 onChange={(evento) => setReceitaId(evento.target.value)}
-                className="h-12 w-full rounded-pill border border-input bg-white px-5 text-base text-text-dark outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+                className="h-12 w-full rounded-pill border border-input bg-card px-5 text-base text-text-dark outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
               >
                 <option value="">Deixar o horário vazio</option>
                 {receitas.map((receita) => (

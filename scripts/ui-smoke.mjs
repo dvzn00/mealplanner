@@ -545,6 +545,52 @@ try {
     primeiroFoco || "nada focado",
   );
 
+  // --- tema escuro ---
+  // O que interessa aqui não é a cor: é que a escolha sobreviva ao recarregar
+  // sem piscar claro antes. O botão troca de nome acessível junto com o ícone,
+  // então perguntar pelo nome já confirma qual estado a interface anuncia.
+  const temaInicial = await pagina.evaluate(() =>
+    document.documentElement.classList.contains("dark") ? "escuro" : "claro",
+  );
+  const alvo = temaInicial === "escuro" ? "claro" : "escuro";
+
+  await pagina.getByRole("button", { name: `Mudar para o tema ${alvo}` }).click();
+  await pagina.waitForFunction(
+    (queria) =>
+      (document.documentElement.classList.contains("dark")
+        ? "escuro"
+        : "claro") === queria,
+    alvo,
+    { timeout: 5000 },
+  );
+  conferir("o botão de tema troca o tema", true, alvo);
+
+  await pagina.reload({ waitUntil: "networkidle" });
+  const depoisDeRecarregar = await pagina.evaluate(() =>
+    document.documentElement.classList.contains("dark") ? "escuro" : "claro",
+  );
+  conferir(
+    "o tema escolhido sobrevive ao recarregar",
+    depoisDeRecarregar === alvo,
+    depoisDeRecarregar,
+  );
+
+  const fundo = await pagina.evaluate(() =>
+    getComputedStyle(document.body).backgroundColor,
+  );
+  conferir(
+    "e o corpo da página pinta o fundo do tema",
+    fundo !== "rgba(0, 0, 0, 0)" && fundo !== "transparent",
+    fundo,
+  );
+
+  // Volta ao tema de origem para não deixar a escolha vazando no armazenamento
+  // do perfil do navegador entre execuções.
+  await pagina
+    .getByRole("button", { name: `Mudar para o tema ${temaInicial}` })
+    .click();
+  await pagina.waitForTimeout(300);
+
   // --- sair ---
   await pagina.getByRole("button", { name: "Sair da conta" }).click();
   await pagina.waitForURL("**/login**", { timeout: 20000 });

@@ -110,7 +110,7 @@ export function ItemDispensado({ item }: { item: ItemDeCompra }) {
             if (!resultado.sucesso) toast.error(resultado.erro);
           })
         }
-        className="inline-flex size-8 shrink-0 items-center justify-center rounded-pill text-text-muted transition-colors hover:bg-white hover:text-primary-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-strong"
+        className="inline-flex size-8 shrink-0 items-center justify-center rounded-pill text-text-muted transition-colors hover:bg-card hover:text-primary-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-strong"
       >
         <RotateCcw className="size-4" strokeWidth={1.75} aria-hidden="true" />
       </button>

@@ -4,6 +4,7 @@ import {
   BotaoDeSair,
   MenuDoUsuario,
 } from "@/components/app-shell/menu-do-usuario";
+import { AlternarTema } from "@/components/app-shell/alternar-tema";
 import { Navegacao } from "@/components/app-shell/navegacao";
 import { Toaster } from "@/components/ui/sonner";
 import { Marca } from "@/components/marca";
@@ -46,6 +47,7 @@ export default async function LayoutDoApp({
 
           <div className="ml-auto flex items-center gap-1">
             <MenuDoUsuario nome={usuario.nome} email={usuario.email} />
+            <AlternarTema />
             <BotaoDeSair />
           </div>
         </header>

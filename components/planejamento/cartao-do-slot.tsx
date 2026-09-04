@@ -137,7 +137,7 @@ export function CartaoDoSlot({
                   await limparReceitaDoSlot(slot.id);
                 })
               }
-              className="-mr-1 inline-flex size-6 shrink-0 items-center justify-center rounded-lg text-text-muted transition-colors hover:bg-white hover:text-secondary-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-strong"
+              className="-mr-1 inline-flex size-6 shrink-0 items-center justify-center rounded-lg text-text-muted transition-colors hover:bg-card hover:text-secondary-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-strong"
             >
               <Trash2
                 className="size-3.5"
