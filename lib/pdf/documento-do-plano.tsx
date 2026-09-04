@@ -387,7 +387,7 @@ export function DocumentoDoPlano({
 
             {/* Sempre falta lembrar de alguma coisa no corredor do mercado. */}
             <View style={estilos.anotacoes}>
-              <Text style={estilos.tituloDeSecao}>OUTRAS COISAS</Text>
+              <Text style={estilos.tituloDeSecao}>OBSERVAÇÕES</Text>
               {Array.from({ length: 5 }, (_, indice) => (
                 <View key={indice} style={estilos.linhaEmBranco} />
               ))}

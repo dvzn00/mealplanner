@@ -889,7 +889,7 @@ não mostra.
 
 Na folha da lista, cada item tem uma caixa de 11pt para marcar a caneta, e o
 que já estava comprado vem com a caixa preenchida — a folha concorda com o app
-em vez de contradizê-lo. No fim, cinco linhas em branco sob "OUTRAS COISAS":
+em vez de contradizê-lo. No fim, cinco linhas em branco sob "OBSERVAÇÕES":
 sempre falta lembrar de alguma coisa no corredor do mercado, e a lista impressa
 é onde isso é anotado.
 
