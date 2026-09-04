@@ -1137,6 +1137,58 @@ nunca foi "ter seis" — é "caber seis".
 projetar três fileiras contra a altura da janela. Isso vale mesmo quando a
 conta de teste tem duas receitas, e continua valendo quando o catálogo crescer.
 
+### 86. Duas cores com significado, não sete sem
+
+O pedido era colorir os sete dias para separá-los, principalmente no celular.
+Sete matizes exigiriam inventar quatro que a marca não tem — a paleta tem
+verde, coral e lilás —, mais catorze tokens por causa do tema escuro, cada um
+precisando passar em 4,5:1. E o mapeamento seria arbitrário: quarta não é
+"mais lilás" que terça, então o código nunca se aprende. A cor viraria
+decoração a decodificar.
+
+Fim de semana, não. "O que eu como no sábado" é uma pergunta diferente de "o
+que eu como na terça" — é uma categoria que a pessoa já usa para pensar. Dias
+úteis em `primary-soft`/`primary-deep`, sábado e domingo em
+`secondary-soft`/`secondary-deep`. Dois pares que o teste de contraste já
+cobre nos dois temas: nenhum token novo, nenhuma afirmação nova.
+
+O anel de hoje continua por cima, sem brigar com nada.
+
+### 87. Cor diz onde você está; grudar diz quando
+
+A página da semana no celular tem uns 4.400px. No meio das refeições de
+quinta, o rótulo "Quinta" saiu da tela faz tempo — e cor sozinha responderia
+"você está na zona verde", que ainda exige lembrar de qual dia é o verde.
+
+O cabeçalho do dia gruda abaixo da barra do aplicativo (`top-16`, a altura
+dela), e a pergunta fica respondida o tempo todo. Só abaixo de `md`: no
+desktop as colunas ficam lado a lado e curtas, não há o que grudar.
+
+### 88. `overflow-x-auto` mata `sticky` no outro eixo
+
+O contêiner da grade tinha `overflow-x-auto` em todas as larguras. Pela
+especificação, declarar overflow em um eixo faz o outro computar `auto` — a
+caixa vira contêiner de rolagem, e o `sticky` vertical do cabeçalho passa a se
+prender a ela, que tem a altura do conteúdo. Resultado: gruda em nada.
+
+Agora é `md:overflow-x-auto`. Abaixo de `md` não há o que rolar de lado de
+qualquer jeito — os dias empilham e ocupam a largura inteira. A checagem
+automática de rolagem horizontal das capturas confirmou que os rótulos
+`sr-only` da decisão 36 não voltaram a escapar sem o contêiner.
+
+### 89. "Domingo" estava cortado desde sempre
+
+Ao mexer no cabeçalho eu apertei o padding e "Domingo" virou "Domin…". Antes
+de corrigir, medi as duas versões lado a lado — a minha e a do commit
+anterior. Eram idênticas: **faltavam 5px nas duas**. O corte era anterior às
+cores, e acontece sempre que a grade está na largura mínima, ou seja na maior
+parte do desktop, não num extremo.
+
+Nenhuma captura de tela denunciou isso em onze blocos. Reticências de cinco
+pixels não saltam de uma imagem; saltam de `scrollWidth > clientWidth`. A
+grade foi de `63rem` para `65rem` e `ui:plano` passou a medir os sete nomes em
+quatro larguras.
+
 ## Comandos
 
 | Comando             | O que faz                                  |

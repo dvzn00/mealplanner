@@ -545,6 +545,31 @@ try {
     arquivo.suggestedFilename() === `meal-planner-lista-${segundaAtual()}.pdf`,
     arquivo.suggestedFilename(),
   );
+  // --- nome do dia inteiro, em toda largura ---
+  // "Domingo" é o nome mais longo e a coluna mais apertada acontece quando a
+  // grade está na largura mínima — o que é a maior parte do desktop, não o
+  // extremo. Ficou cortado por muito tempo sem ninguém ver: reticências de
+  // cinco pixels não saltam de uma captura de tela, só de uma medição.
+  for (const largura of [768, 1024, 1280, 1440]) {
+    await pagina.setViewportSize({ width: largura, height: 900 });
+    await pagina.goto(`${BASE}/dashboard`, { waitUntil: "networkidle" });
+
+    const cortados = await pagina.evaluate(() =>
+      [...document.querySelectorAll('section[aria-labelledby^="dia-"] h3')]
+        .filter((titulo) => titulo.scrollWidth > titulo.clientWidth + 1)
+        .map(
+          (titulo) =>
+            `${titulo.textContent.trim()} (faltam ${titulo.scrollWidth - titulo.clientWidth}px)`,
+        ),
+    );
+
+    conferir(
+      `em ${largura}px nenhum nome de dia é cortado`,
+      cortados.length === 0,
+      cortados.join(", "),
+    );
+  }
+
   // --- no celular, sem arrastar ---
   // A grade nasceu para o mouse. No toque, arrastar por sete colunas que rolam
   // de lado é o gesto mais difícil que o produto tem — e por um tempo foi o
@@ -577,6 +602,62 @@ try {
     gesto.toque !== "none",
     `touch-action: ${gesto.toque}`,
   );
+
+  // --- cores do dia e cabeçalho grudento ---
+  // Fim de semana em coral, dias úteis em verde. Comparar as cores calculadas
+  // é o que impede a regra de sumir num refactor sem ninguém notar.
+  const corDe = (slug) =>
+    pagina
+      .locator(`section[aria-labelledby="dia-${slug}"] header`)
+      .evaluate((el) => getComputedStyle(el).backgroundColor);
+
+  const [terca, sabado, domingo] = await Promise.all([
+    corDe("terca"),
+    corDe("sabado"),
+    corDe("domingo"),
+  ]);
+
+  conferir(
+    "sábado e domingo dividem a cor de fim de semana",
+    sabado === domingo,
+    `${sabado} / ${domingo}`,
+  );
+  conferir(
+    "e ela é diferente da cor dos dias úteis",
+    sabado !== terca,
+    `útil ${terca}, fim de semana ${sabado}`,
+  );
+
+  // A captura de página inteira mostra a cor, mas não prova que o cabeçalho
+  // gruda — para isso é preciso rolar para dentro do dia e medir. Foi aqui que
+  // o `overflow-x-auto` do contêiner atrapalhava: declarar overflow num eixo
+  // faz o outro virar `auto`, e o sticky se prenderia àquela caixa.
+  await pagina.evaluate(() => {
+    const secao = document.querySelector('section[aria-labelledby="dia-quinta"]');
+    window.scrollTo(0, window.scrollY + secao.getBoundingClientRect().top + 180);
+  });
+  await pagina.waitForTimeout(400);
+
+  const posicoes = await pagina.evaluate(() => {
+    const secao = document.querySelector('section[aria-labelledby="dia-quinta"]');
+    return {
+      topoDaSecao: secao.getBoundingClientRect().top,
+      topoDoCabecalho: secao.querySelector("header").getBoundingClientRect().top,
+    };
+  });
+
+  conferir(
+    "rolamos mesmo para dentro do dia",
+    posicoes.topoDaSecao < 0,
+    `seção em ${Math.round(posicoes.topoDaSecao)}px`,
+  );
+  conferir(
+    "e o cabeçalho do dia fica preso abaixo da barra do aplicativo",
+    posicoes.topoDoCabecalho >= 60 && posicoes.topoDoCabecalho <= 70,
+    `cabeçalho em ${Math.round(posicoes.topoDoCabecalho)}px`,
+  );
+
+  await pagina.evaluate(() => window.scrollTo(0, 0));
 
   const vazios = await slotsDoDia(userId, segundaAtual(), "quarta");
   const alvo = vazios.find((s) => !s.recipe_id);

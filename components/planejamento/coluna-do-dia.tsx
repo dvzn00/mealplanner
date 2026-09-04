@@ -20,6 +20,8 @@ export function ColunaDoDia({
   aoCopiar: () => void;
   aoEditarSlot: (slot: SlotDoPlano) => void;
 }) {
+  const fimDeSemana = dia.slug === "sabado" || dia.slug === "domingo";
+
   return (
     <section
       aria-labelledby={`dia-${dia.slug}`}
@@ -29,21 +31,49 @@ export function ColunaDoDia({
       )}
     >
       {/*
-        Só nome e data no cabeçalho. Um terceiro elemento aqui espremia
-        "Segunda" até virar "Segu…" — a coluna tem cerca de 140px, e o nome do
-        dia é a única coisa que ninguém deve precisar adivinhar.
+        Duas cores, não sete. Fim de semana é uma categoria que a pessoa já usa
+        para pensar — "o que eu como no sábado" é outra pergunta —, então a cor
+        carrega significado em vez de virar um código a decorar. Sete matizes
+        exigiriam inventar quatro que a marca não tem, mais catorze tokens por
+        causa do tema escuro, e ainda assim quarta não é "mais lilás" que terça.
+
+        Os dois pares já passam no teste de contraste nos dois temas.
+
+        O cabeçalho gruda no celular: a página da semana tem uns 4.000px, e no
+        meio das refeições de quinta o rótulo "Quinta" já saiu da tela faz
+        tempo. Cor sozinha diria "você está na zona coral"; grudar responde
+        "você está no sábado". No desktop as colunas ficam lado a lado e
+        curtas, então não há o que grudar — daí o `max-md:`.
+
+        `top-16` é a altura da barra do aplicativo, que também é grudenta.
+
+        Só nome, marca de hoje e data. Um quarto elemento espremia "Segunda"
+        até virar "Segu…" na coluna de 140px do desktop, e é por isso que a
+        marca de hoje some acima de `md` — lá o anel e a posição já bastam.
       */}
-      <header className="flex items-baseline justify-between gap-2 px-1">
-        <h3
-          id={`dia-${dia.slug}`}
-          className={cn(
-            "truncate text-sm font-semibold",
-            ehHoje ? "text-primary-deep" : "text-text-dark",
-          )}
-        >
+      <header
+        className={cn(
+          // O respiro largo é só do celular. Na coluna de 133px do desktop,
+          // 12px de padding a mais são o que transforma "Domingo" em "Domin…"
+          // — e o nome do dia é a única coisa que ninguém deve adivinhar.
+          "flex items-baseline gap-1.5 rounded-xl px-1 py-1.5 max-md:gap-2 max-md:rounded-2xl max-md:px-2.5",
+          "max-md:sticky max-md:top-16 max-md:z-10",
+          fimDeSemana
+            ? "bg-secondary-soft text-secondary-deep"
+            : "bg-primary-soft text-primary-deep",
+        )}
+      >
+        <h3 id={`dia-${dia.slug}`} className="truncate text-sm font-semibold">
           {dia.longo}
         </h3>
-        <span className="shrink-0 text-xs tabular-nums text-text-muted">
+
+        {ehHoje && (
+          <span className="shrink-0 rounded-pill bg-card px-2 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wide md:hidden">
+            Hoje
+          </span>
+        )}
+
+        <span className="ml-auto shrink-0 text-xs tabular-nums">
           {dia.dataCurta}
         </span>
       </header>

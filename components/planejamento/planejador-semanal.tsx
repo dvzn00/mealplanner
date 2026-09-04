@@ -157,8 +157,18 @@ export function PlanejadorSemanal({
           do clipe do contêiner e fazem a página inteira rolar de lado — uns
           200px de nada, que no toque viram um deslize acidental.
         */}
-        <div className="relative -mx-4 min-w-0 overflow-x-auto px-4 pb-2 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
-          <div className="grid gap-3 md:min-w-[63rem] md:grid-cols-7">
+        {/*
+          `overflow-x-auto` só a partir de `md`. Pela especificação, declarar
+          overflow em um eixo faz o outro virar `auto`, e isso transforma a
+          caixa num contêiner de rolagem — o `sticky` vertical do cabeçalho do
+          dia passaria a se prender a ela, que tem a altura do conteúdo, em vez
+          de à janela. Ou seja: não grudaria em nada.
+
+          Abaixo de `md` não há o que rolar de lado de qualquer forma — os dias
+          empilham e ocupam a largura inteira.
+        */}
+        <div className="relative -mx-4 min-w-0 px-4 pb-2 sm:-mx-6 sm:px-6 md:overflow-x-auto lg:-mx-8 lg:px-8">
+          <div className="grid gap-3 md:min-w-[65rem] md:grid-cols-7">
             {dias.map((dia) => (
               <ColunaDoDia
                 key={dia.slug}
