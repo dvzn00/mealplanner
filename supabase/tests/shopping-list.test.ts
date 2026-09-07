@@ -213,7 +213,7 @@ describe("generate_shopping_list", () => {
       { ingredientId: cafe, quantidade: 20, unidade: "g" },
     ]);
 
-    const outroPlano = await criarPlano(db, userId, "2026-09-14");
+    const outroPlano = await criarPlano(db, userId, "2020-01-13");
 
     await criarSlot(db, { planId, dia: "segunda", recipeId: receita });
     await criarSlot(db, { planId: outroPlano, dia: "sexta", recipeId: receita });

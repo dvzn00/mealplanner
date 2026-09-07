@@ -113,7 +113,7 @@ describe("RLS: planos e slots", () => {
       comoUsuario(db, bruno, (tx) =>
         tx.query(
           `insert into public.weekly_plans (user_id, semana_inicio, semana_fim)
-           values ($1, '2026-09-14'::date, '2026-09-20'::date)`,
+           values ($1, '2020-01-13'::date, '2020-01-19'::date)`,
           [ana],
         ),
       ),

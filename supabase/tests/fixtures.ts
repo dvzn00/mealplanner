@@ -97,10 +97,24 @@ export async function criarReceita(
   return recipeId;
 }
 
+/**
+ * Uma segunda-feira do passado, e isso é deliberado.
+ *
+ * Criar usuário dispara `handle_new_user`, que chama `montar_semana_de_exemplo`
+ * e já grava o plano da semana **corrente**. Se a data daqui cair na mesma
+ * semana, os dois batem em `weekly_plans_user_id_semana_inicio_key` e a suíte
+ * inteira de RLS cai junto.
+ *
+ * A data anterior era uma segunda do futuro próximo, e o calendário a alcançou:
+ * em 07/09/2026 ela virou "hoje". O tempo só anda para a frente, então uma
+ * segunda do passado nunca volta a ser a semana corrente.
+ */
+const SEGUNDA_ANTIGA = "2020-01-06";
+
 export async function criarPlano(
   db: PGlite,
   userId: string,
-  segundaFeira = "2026-09-07",
+  segundaFeira = SEGUNDA_ANTIGA,
 ): Promise<string> {
   return inserirRetornandoId(
     db,
